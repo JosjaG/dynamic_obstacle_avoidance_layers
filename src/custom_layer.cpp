@@ -35,12 +35,16 @@ namespace social_navigation_layers
         server_->setCallback(f_);
     }
 
-    // void CustomLayer::predictedBoat(const dynamic_reconfigure::Config& vel) {
-    //     interp_velocity_ = vel.doubles[0].value;
-    // }
-
     void CustomLayer::interpVelCallback(const dynamic_reconfigure::Config& vel) {
         interp_velocity_ = vel.doubles[0].value;
+    }
+
+    void CustomLayer::predictedBoat(double vel_i, double vel_b) {   // should, for each boat, remap it to the expected location
+        // position boat wrt dory --> distance between boat and dory
+        // time to boat --> distance between boat and dory / interp_velocity_
+        // predicted distance boat will travel in given time --> time to boat * velocity of boat
+        // location of boat wrt map (so move boat predicted distance in velocity direction)
+        // result is new list of boats with adjusted locations
     }
 
     void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)

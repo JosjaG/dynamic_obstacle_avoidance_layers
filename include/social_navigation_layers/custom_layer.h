@@ -22,6 +22,7 @@ namespace social_navigation_layers
     protected:
       void configure(CustomLayerConfig &config, uint32_t level);
       void interpVelCallback(const dynamic_reconfigure::Config& vel); 
+      void predictedBoat(double vel_i, double vel_b);
       double cutoff_, amplitude_, covar_, factor_, interp_velocity_;
       dynamic_reconfigure::Server<CustomLayerConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerConfig>::CallbackType f_;
