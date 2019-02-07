@@ -35,7 +35,7 @@ namespace social_navigation_layers
         server_->setCallback(f_);
     }
     
-    void ProxemicLayer::updateBoundsFromPeople(double* min_x, double* min_y, double* max_x, double* max_y)
+    void ProxemicLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) //Should be updateBoundsFromPeople
     {
         std::list<people_msgs::Person>::iterator p_it;
         

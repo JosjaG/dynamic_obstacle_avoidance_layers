@@ -23,7 +23,6 @@ double boat_get_radius(double cutoff, double A, double var){
     return sqrt(-2*var * log(cutoff/A) );
 }
 
-
 namespace social_navigation_layers
 {
     void CustomLayer::onInitialize()
@@ -32,12 +31,22 @@ namespace social_navigation_layers
         ros::NodeHandle nh("~/" + name_), g_nh;
         server_ = new dynamic_reconfigure::Server<CustomLayerConfig>(nh);
         f_ = boost::bind(&CustomLayer::configure, this, _1, _2);
+        interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayer::interpVelCallback, this);
         server_->setCallback(f_);
     }
 
-    void CustomLayer::updateBoundsFromPeople(double* min_x, double* min_y, double* max_x, double* max_y)
+    // void CustomLayer::predictedBoat(const dynamic_reconfigure::Config& vel) {
+    //     interp_velocity_ = vel.doubles[0].value;
+    // }
+
+    void CustomLayer::interpVelCallback(const dynamic_reconfigure::Config& vel) {
+        interp_velocity_ = vel.doubles[0].value;
+    }
+
+    void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
         std::list<people_msgs::Person>::iterator p_it;
+        // ROS_INFO("Velocity of the interpolator is %f. \n", interp_velocity_);
 
         for(p_it = transformed_people_.begin(); p_it != transformed_people_.end(); ++p_it){
             people_msgs::Person person = *p_it;
@@ -150,5 +159,4 @@ namespace social_navigation_layers
         people_keep_time_ = ros::Duration(config.keep_time);
         enabled_ = config.enabled;
     }
-
 };
