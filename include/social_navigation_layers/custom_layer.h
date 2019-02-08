@@ -1,5 +1,5 @@
-#ifndef PROXEMIC_LAYER_H_
-#define PROXEMIC_LAYER_H_
+#ifndef CUSTOM_LAYER_H_
+#define CUSTOM_LAYER_H_
 #include <ros/ros.h>
 #include <social_navigation_layers/social_layer.h>
 #include <dynamic_reconfigure/server.h>
@@ -22,11 +22,13 @@ namespace social_navigation_layers
     protected:
       void configure(CustomLayerConfig &config, uint32_t level);
       void interpVelCallback(const dynamic_reconfigure::Config& vel); 
-      void predictedBoat(double vel_i, double vel_b);
+      void predictedBoat();
       double cutoff_, amplitude_, covar_, factor_, interp_velocity_;
       dynamic_reconfigure::Server<CustomLayerConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerConfig>::CallbackType f_;
       ros::Subscriber interp_vel_sub_;
+      tf::TransformListener listener_;
+      std::list<people_msgs::Person> moved_boats_;
   };
 };
 #endif
