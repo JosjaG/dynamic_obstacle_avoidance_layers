@@ -3,6 +3,8 @@
 #include <ros/ros.h>
 #include <social_navigation_layers/social_layer.h>
 #include <dynamic_reconfigure/server.h>
+#include <social_navigation_layers/Boats.h>
+#include <social_navigation_layers/Boat.h>
 #include <social_navigation_layers/CustomLayerConfig.h>
 
 double boat_gaussian(double x, double y, double x0, double y0, double A, double varx, double vary, double skew);
@@ -28,7 +30,7 @@ namespace social_navigation_layers
       dynamic_reconfigure::Server<CustomLayerConfig>::CallbackType f_;
       ros::Subscriber interp_vel_sub_;
       tf::TransformListener listener_;
-      std::list<people_msgs::Person> moved_boats_;
+      std::list<social_navigation_layers::Boat> moved_boats_;
   };
 };
 #endif

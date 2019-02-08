@@ -43,13 +43,13 @@ namespace social_navigation_layers
     void CustomLayer::predictedBoat() {   // should, for each boat, remap it to the expected location
         std::string global_frame = layered_costmap_->getGlobalFrameID();
         moved_boats_.clear();
-        for(unsigned int i=0; i<boats_list_.people.size(); i++){
-            people_msgs::Person& boat = boats_list_.people[i];
+        for(unsigned int i=0; i<boats_list_.boats.size(); i++){
+            social_navigation_layers::Boat& boat = boats_list_.boats[i];
             // position boat wrt dory --> distance between boat and dory
             tf::StampedTransform transform_d;
             try {
-                listener_.waitForTransform("base_link", boat.name, ros::Time(0), ros::Duration(1.0) );
-                listener_.lookupTransform("base_link", boat.name, ros::Time(0), transform_d);
+                listener_.waitForTransform("base_link", boat.id, ros::Time(0), ros::Duration(1.0) );
+                listener_.lookupTransform("base_link", boat.id, ros::Time(0), transform_d);
             } catch (tf::TransformException ex) {
                 ROS_ERROR("%s",ex.what());
             }
@@ -59,7 +59,7 @@ namespace social_navigation_layers
             // predicted distance boat will travel in given time --> time to boat * velocity of boat
             // new location of boat wrt map (so move boat predicted distance in velocity direction)
             // result is new list of boats with adjusted locations
-            people_msgs::Person tpt;
+            social_navigation_layers::Boat tpt;
             geometry_msgs::PointStamped pt, opt;
             try{
               pt.point.x = boat.position.x + time_boat*boat.velocity.x;
@@ -87,12 +87,12 @@ namespace social_navigation_layers
 
     void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
-        std::list<people_msgs::Person>::iterator p_it;
+        std::list<social_navigation_layers::Boat>::iterator p_it;
         CustomLayer::predictedBoat();
         // ROS_INFO("Received time to boat is %f. \n", CustomLayer::predictedBoat(1.0,2.0));
 
         for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
-            people_msgs::Person boat = *p_it;
+            social_navigation_layers::Boat boat = *p_it;
 
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
@@ -110,17 +110,17 @@ namespace social_navigation_layers
         boost::recursive_mutex::scoped_lock lock(lock_);
         if(!enabled_) return;
 
-        if( boats_list_.people.size() == 0 )
+        if( boats_list_.boats.size() == 0 )
           return;
         if( cutoff_ >= amplitude_)
             return;
 
-        std::list<people_msgs::Person>::iterator p_it;
+        std::list<social_navigation_layers::Boat>::iterator p_it;
         costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
         double res = costmap->getResolution();
 
         for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
-            people_msgs::Person boat = *p_it;
+            social_navigation_layers::Boat boat = *p_it;
             double angle = atan2(boat.velocity.y, boat.velocity.x);
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;

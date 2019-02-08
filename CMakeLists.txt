@@ -8,6 +8,19 @@ find_package(catkin REQUIRED COMPONENTS
   people_msgs
   pluginlib
   roscpp
+  geometry_msgs
+)
+
+add_message_files(
+  FILES
+  Boats.msg
+  Boat.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
 )
 
 generate_dynamic_reconfigure_options(
