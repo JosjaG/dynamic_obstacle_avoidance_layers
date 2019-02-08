@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 generate_dynamic_reconfigure_options(
-  cfg/ProxemicLayer.cfg
+  # cfg/ProxemicLayer.cfg
   cfg/CustomLayer.cfg
 )
 
@@ -28,7 +28,7 @@ include_directories(
 ## add cpp library
 add_library(social_layers 
             src/social_layer.cpp
-            src/proxemic_layer.cpp 
+            # src/proxemic_layer.cpp 
             # src/passing_layer.cpp
             src/custom_layer.cpp
 )

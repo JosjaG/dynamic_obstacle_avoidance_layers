@@ -23,11 +23,11 @@ namespace social_navigation_layers
       bool isDiscretized() { return false; }
 
     protected:
-      void peopleCallback(const people_msgs::People& people);
-      ros::Subscriber people_sub_;
-      people_msgs::People people_list_;
-      std::list<people_msgs::Person> transformed_people_;
-      ros::Duration people_keep_time_;
+      void boatsCallback(const people_msgs::People& boats);
+      ros::Subscriber boats_sub_;
+      people_msgs::People boats_list_;
+      std::list<people_msgs::Person> transformed_boats_;
+      ros::Duration boats_keep_time_;
       boost::recursive_mutex lock_;
       tf::TransformListener tf_;
       bool first_time_;

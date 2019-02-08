@@ -2,6 +2,7 @@
 #include <math.h>
 #include <angles/angles.h>
 #include <pluginlib/class_list_macros.h>
+#include <tf/transform_listener.h>
 PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayer, costmap_2d::Layer)
 
 using costmap_2d::NO_INFORMATION;
@@ -35,30 +36,72 @@ namespace social_navigation_layers
         server_->setCallback(f_);
     }
 
-    // void CustomLayer::predictedBoat(const dynamic_reconfigure::Config& vel) {
-    //     interp_velocity_ = vel.doubles[0].value;
-    // }
-
     void CustomLayer::interpVelCallback(const dynamic_reconfigure::Config& vel) {
         interp_velocity_ = vel.doubles[0].value;
+    }
+
+    void CustomLayer::predictedBoat() {   // should, for each boat, remap it to the expected location
+        std::string global_frame = layered_costmap_->getGlobalFrameID();
+        moved_boats_.clear();
+        for(unsigned int i=0; i<boats_list_.people.size(); i++){
+            people_msgs::Person& boat = boats_list_.people[i];
+            // position boat wrt dory --> distance between boat and dory
+            tf::StampedTransform transform_d;
+            try {
+                listener_.waitForTransform("base_link", boat.name, ros::Time(0), ros::Duration(1.0) );
+                listener_.lookupTransform("base_link", boat.name, ros::Time(0), transform_d);
+            } catch (tf::TransformException ex) {
+                ROS_ERROR("%s",ex.what());
+            }
+            float dist_boat = sqrt(pow(transform_d.getOrigin().x(), 2) + pow(transform_d.getOrigin().y(), 2));
+            // time to boat --> distance between boat and dory / interp_velocity_
+            float time_boat = dist_boat/interp_velocity_;
+            // predicted distance boat will travel in given time --> time to boat * velocity of boat
+            // new location of boat wrt map (so move boat predicted distance in velocity direction)
+            // result is new list of boats with adjusted locations
+            people_msgs::Person tpt;
+            geometry_msgs::PointStamped pt, opt;
+            try{
+              pt.point.x = boat.position.x + time_boat*boat.velocity.x;
+              pt.point.y = boat.position.y + time_boat*boat.velocity.y;
+              pt.point.z = boat.position.z;
+              pt.header.frame_id = boats_list_.header.frame_id;
+              tf_.transformPoint(global_frame, pt, opt);
+              tpt.position.x = opt.point.x;
+              tpt.position.y = opt.point.y;
+              tpt.position.z = opt.point.z;
+
+              tpt.velocity.x = boat.velocity.x;
+              tpt.velocity.y = boat.velocity.y;
+              tpt.velocity.z = boat.velocity.z;
+              tf_.transformPoint(global_frame, pt, opt);
+              
+              moved_boats_.push_back(tpt);
+            }
+            catch(tf::LookupException& ex) {
+              ROS_ERROR("No Transform available Error: %s\n", ex.what());
+              continue;
+            }
+        }
     }
 
     void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
         std::list<people_msgs::Person>::iterator p_it;
-        // ROS_INFO("Velocity of the interpolator is %f. \n", interp_velocity_);
+        CustomLayer::predictedBoat();
+        // ROS_INFO("Received time to boat is %f. \n", CustomLayer::predictedBoat(1.0,2.0));
 
-        for(p_it = transformed_people_.begin(); p_it != transformed_people_.end(); ++p_it){
-            people_msgs::Person person = *p_it;
+        for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
+            people_msgs::Person boat = *p_it;
 
-            double mag = sqrt(pow(person.velocity.x,2) + pow(person.velocity.y, 2));
+            double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
             double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor );
 
-            *min_x = std::min(*min_x, person.position.x - point);
-            *min_y = std::min(*min_y, person.position.y - point);
-            *max_x = std::max(*max_x, person.position.x + point);
-            *max_y = std::max(*max_y, person.position.y + point);
+            *min_x = std::min(*min_x, boat.position.x - point);
+            *min_y = std::min(*min_y, boat.position.y - point);
+            *max_x = std::max(*max_x, boat.position.x + point);
+            *max_y = std::max(*max_y, boat.position.y + point);
 
         }
     }
@@ -67,7 +110,7 @@ namespace social_navigation_layers
         boost::recursive_mutex::scoped_lock lock(lock_);
         if(!enabled_) return;
 
-        if( people_list_.people.size() == 0 )
+        if( boats_list_.people.size() == 0 )
           return;
         if( cutoff_ >= amplitude_)
             return;
@@ -76,10 +119,10 @@ namespace social_navigation_layers
         costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
         double res = costmap->getResolution();
 
-        for(p_it = transformed_people_.begin(); p_it != transformed_people_.end(); ++p_it){
-            people_msgs::Person person = *p_it;
-            double angle = atan2(person.velocity.y, person.velocity.x);
-            double mag = sqrt(pow(person.velocity.x,2) + pow(person.velocity.y, 2));
+        for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
+            people_msgs::Person boat = *p_it;
+            double angle = atan2(boat.velocity.y, boat.velocity.x);
+            double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
             double base = boat_get_radius(cutoff_, amplitude_, covar_);
             double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor );
@@ -87,7 +130,7 @@ namespace social_navigation_layers
             unsigned int width = std::max(1, int( (base + point) / res )),
                           height = std::max(1, int( (base + point) / res ));
 
-            double cx = person.position.x, cy = person.position.y;
+            double cx = boat.position.x, cy = boat.position.y;
 
             double ox, oy;
             if(sin(angle)>0)
@@ -156,7 +199,7 @@ namespace social_navigation_layers
         amplitude_ = config.amplitude;
         covar_ = config.covariance;
         factor_ = config.factor;
-        people_keep_time_ = ros::Duration(config.keep_time);
+        boats_keep_time_ = ros::Duration(config.keep_time);
         enabled_ = config.enabled;
     }
 };
