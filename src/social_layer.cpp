@@ -17,7 +17,7 @@ namespace social_navigation_layers
         boats_sub_ = nh.subscribe("/boats", 1, &SocialLayer::boatsCallback, this);
     }
     
-    void SocialLayer::boatsCallback(const people_msgs::People& boats) {
+    void SocialLayer::boatsCallback(const social_navigation_layers::Boats& boats) {
         boost::recursive_mutex::scoped_lock lock(lock_);
         boats_list_ = boats;
     }
@@ -29,9 +29,9 @@ namespace social_navigation_layers
         std::string global_frame = layered_costmap_->getGlobalFrameID();
         transformed_boats_.clear();
         
-        for(unsigned int i=0; i<boats_list_.people.size(); i++){
-            people_msgs::Person& boat = boats_list_.people[i];
-            people_msgs::Person tpt;
+        for(unsigned int i=0; i<boats_list_.boats.size(); i++){
+            social_navigation_layers::Boat& boat = boats_list_.boats[i];
+            social_navigation_layers::Boat tpt;
             geometry_msgs::PointStamped pt, opt;
             
             try{

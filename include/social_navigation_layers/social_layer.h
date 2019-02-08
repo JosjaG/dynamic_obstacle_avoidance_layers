@@ -3,7 +3,9 @@
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
-#include <people_msgs/People.h>
+// #include <people_msgs/People.h>
+#include <social_navigation_layers/Boats.h>
+#include <social_navigation_layers/Boat.h>
 #include <boost/thread.hpp>
 
 namespace social_navigation_layers
@@ -23,10 +25,10 @@ namespace social_navigation_layers
       bool isDiscretized() { return false; }
 
     protected:
-      void boatsCallback(const people_msgs::People& boats);
+      void boatsCallback(const social_navigation_layers::Boats& boats);
       ros::Subscriber boats_sub_;
-      people_msgs::People boats_list_;
-      std::list<people_msgs::Person> transformed_boats_;
+      social_navigation_layers::Boats boats_list_;
+      std::list<social_navigation_layers::Boat> transformed_boats_;
       ros::Duration boats_keep_time_;
       boost::recursive_mutex lock_;
       tf::TransformListener tf_;
