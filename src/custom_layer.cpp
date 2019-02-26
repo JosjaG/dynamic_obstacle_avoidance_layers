@@ -67,13 +67,10 @@ namespace social_navigation_layers
               pt.point.z = boat.position.z;
               pt.header.frame_id = boats_list_.header.frame_id;
               tf_.transformPoint(global_frame, pt, opt);
-              tpt.position.x = opt.point.x;
-              tpt.position.y = opt.point.y;
-              tpt.position.z = opt.point.z;
+              tpt.position = opt.point;
 
-              tpt.velocity.x = boat.velocity.x;
-              tpt.velocity.y = boat.velocity.y;
-              tpt.velocity.z = boat.velocity.z;
+              tpt.velocity = boat.velocity;
+              tpt.size = boat.size;
               tf_.transformPoint(global_frame, pt, opt);
               
               moved_boats_.push_back(tpt);
@@ -124,11 +121,15 @@ namespace social_navigation_layers
             double angle = atan2(boat.velocity.y, boat.velocity.x);
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
-            double base = boat_get_radius(cutoff_, amplitude_, covar_);
-            double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor );
+            double boat_size = std::max(boat.size.x, boat.size.y);
+            double base = boat_get_radius(cutoff_, amplitude_, covar_) + boat_size;
+            double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor) + boat_size;
 
-            unsigned int width = std::max(1, int( (base + point) / res )),
-                          height = std::max(1, int( (base + point) / res ));
+            // unsigned int width = std::max(1, int( (base + point) / res )),
+            //               height = std::max(1, int( (base + point) / res ));
+
+            unsigned int width = int( (base + point) / res ),
+                          height = int( (base + point) / res );
 
             double cx = boat.position.x, cy = boat.position.y;
 
@@ -179,10 +180,13 @@ namespace social_navigation_layers
                   double ma = atan2(y-cy,x-cx);
                   double diff = angles::shortest_angular_distance(angle, ma);
                   double a;
-                  if(fabs(diff)<M_PI/2)
-                      a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor,covar_,angle);
+                  double size_factor = std::max(1,int(boat_size));
+                  if (sqrt(pow(y-cy, 2) + pow(x-cx, 2))<(boat_size/2))
+                    a = costmap_2d::LETHAL_OBSTACLE;
+                  else if(fabs(diff)<M_PI/2)
+                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor*size_factor,covar_,angle);
                   else
-                      a = boat_gaussian(x,y,cx,cy,amplitude_,covar_,       covar_,0);
+                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*size_factor,       covar_,0);
 
                   if(a < cutoff_)
                     continue;
