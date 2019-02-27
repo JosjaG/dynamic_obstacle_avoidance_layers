@@ -121,7 +121,8 @@ namespace social_navigation_layers
             double angle = atan2(boat.velocity.y, boat.velocity.x);
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
-            double boat_size = std::max(boat.size.x, boat.size.y);
+            double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
+            double speed_factor = boat_size + sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
             double base = boat_get_radius(cutoff_, amplitude_, covar_) + boat_size;
             double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor) + boat_size;
 
@@ -180,13 +181,12 @@ namespace social_navigation_layers
                   double ma = atan2(y-cy,x-cx);
                   double diff = angles::shortest_angular_distance(angle, ma);
                   double a;
-                  double size_factor = std::max(1,int(boat_size));
-                  if (sqrt(pow(y-cy, 2) + pow(x-cx, 2))<(boat_size/2))
+                  if ((fabs(x-cx)<(boat.size.x/2.0)) && (fabs(y-cy)<(boat.size.y/2.0)))
                     a = costmap_2d::LETHAL_OBSTACLE;
                   else if(fabs(diff)<M_PI/2)
-                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor*size_factor,covar_,angle);
+                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor*speed_factor,covar_*speed_factor,angle);
                   else
-                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*size_factor,       covar_,0);
+                    a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*speed_factor,covar_*speed_factor,0);
 
                   if(a < cutoff_)
                     continue;
