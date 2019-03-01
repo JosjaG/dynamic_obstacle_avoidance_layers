@@ -30,9 +30,12 @@ namespace social_navigation_layers
     {
         SocialLayer::onInitialize();
         ros::NodeHandle nh("~/" + name_), g_nh;
+        received_path_ = false;
         server_ = new dynamic_reconfigure::Server<CustomLayerConfig>(nh);
         f_ = boost::bind(&CustomLayer::configure, this, _1, _2);
         interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayer::interpVelCallback, this);
+        path_sub_ = g_nh.subscribe("path", 1, &CustomLayer::predictedBoatPath, this);
+        status_sub_ = g_nh.subscribe("move_base/status", 1, &CustomLayer::goalReached, this);
         server_->setCallback(f_);
     }
 
@@ -40,7 +43,28 @@ namespace social_navigation_layers
         interp_velocity_ = vel.doubles[0].value;
     }
 
+    void CustomLayer::predictedBoatPath(const nav_msgs::Path& path) {
+      received_path_ = true;
+      current_path_ = path;
+    }
+
+    void CustomLayer::goalReached(const actionlib_msgs::GoalStatusArray& status) {
+      for (unsigned int i=0; i<status.status_list.size(); i++){
+        if (status.status_list[i].status==3)
+          received_path_ = false;
+      }
+    }
+
     void CustomLayer::predictedBoat() {   // should, for each boat, remap it to the expected location
+      // ROS_INFO("received_path_ is %d. \n", received_path_);
+      if (received_path_)
+        ROS_INFO("received_path_ found true. \n");
+      // Based on path topic, pridict where boats will be whilst Dory follows the path
+      // based on segements of the path? Always split path in n (10?) segements, and predict 
+      // Only look at boats with a velocity in the direction of your path?
+      // 
+      else
+      {
         std::string global_frame = layered_costmap_->getGlobalFrameID();
         moved_boats_.clear();
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
@@ -80,6 +104,7 @@ namespace social_navigation_layers
               continue;
             }
         }
+      }
     }
 
     void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
@@ -110,7 +135,7 @@ namespace social_navigation_layers
         if( boats_list_.boats.size() == 0 )
           return;
         if( cutoff_ >= amplitude_)
-            return;
+          return;
 
         std::list<social_navigation_layers::Boat>::iterator p_it;
         costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();

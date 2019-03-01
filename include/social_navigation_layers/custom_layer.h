@@ -3,6 +3,8 @@
 #include <ros/ros.h>
 #include <social_navigation_layers/social_layer.h>
 #include <dynamic_reconfigure/server.h>
+#include <nav_msgs/Path.h>
+#include <actionlib_msgs/GoalStatusArray.h>
 #include <social_navigation_layers/Boats.h>
 #include <social_navigation_layers/Boat.h>
 #include <social_navigation_layers/CustomLayerConfig.h>
@@ -24,11 +26,15 @@ namespace social_navigation_layers
     protected:
       void configure(CustomLayerConfig &config, uint32_t level);
       void interpVelCallback(const dynamic_reconfigure::Config& vel); 
+      void predictedBoatPath(const nav_msgs::Path& path);
+      void goalReached(const actionlib_msgs::GoalStatusArray& status);
       void predictedBoat();
       double cutoff_, amplitude_, covar_, factor_, interp_velocity_;
+      bool received_path_;
+      nav_msgs::Path current_path_;
       dynamic_reconfigure::Server<CustomLayerConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerConfig>::CallbackType f_;
-      ros::Subscriber interp_vel_sub_;
+      ros::Subscriber interp_vel_sub_, path_sub_, status_sub_;
       tf::TransformListener listener_;
       std::list<social_navigation_layers::Boat> moved_boats_;
   };
