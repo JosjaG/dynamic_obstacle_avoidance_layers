@@ -53,7 +53,7 @@ namespace social_navigation_layers
               tpt.velocity.y = opt.point.y - tpt.position.y;
               tpt.velocity.z = opt.point.z - tpt.position.z;
               
-              transformed_boats_.push_back(tpt);
+              // transformed_boats_.push_back(tpt);
               
             }
             catch(tf::LookupException& ex) {
