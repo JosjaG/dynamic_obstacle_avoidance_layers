@@ -71,6 +71,7 @@ namespace social_navigation_layers
         }
         // updateBoundsFromPeople(min_x, min_y, max_x, max_y);
         updateBoundsFromBoats(min_x, min_y, max_x, max_y);
+        // filterStatic(min_x, min_y, max_x, max_y);
         if(first_time_){
             last_min_x_ = *min_x;
             last_min_y_ = *min_y;    

@@ -1,9 +1,9 @@
-#include <social_navigation_layers/custom_layer.h>
+#include <social_navigation_layers/custom_layer_dynamic.h>
 #include <math.h>
 #include <angles/angles.h>
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
-PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayer, costmap_2d::Layer)
+PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayerDynamic, costmap_2d::Layer)
 
 using costmap_2d::NO_INFORMATION;
 using costmap_2d::LETHAL_OBSTACLE;
@@ -26,47 +26,50 @@ double boat_get_radius(double cutoff, double A, double var){
 
 namespace social_navigation_layers
 {
-    void CustomLayer::onInitialize()
+    void CustomLayerDynamic::onInitialize()
     {
         SocialLayer::onInitialize();
         ros::NodeHandle nh("~/" + name_), g_nh;
         received_path_ = false;
-        server_ = new dynamic_reconfigure::Server<CustomLayerConfig>(nh);
-        f_ = boost::bind(&CustomLayer::configure, this, _1, _2);
-        interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayer::interpVelCallback, this);
-        path_sub_ = g_nh.subscribe("path", 1, &CustomLayer::predictedBoatPath, this);
-        status_sub_ = g_nh.subscribe("move_base/status", 1, &CustomLayer::goalReached, this);
-        server_->setCallback(f_);
+        server_ = new dynamic_reconfigure::Server<CustomLayerDynamicConfig>(nh);
+        f_ = boost::bind(&CustomLayerDynamic::configure, this, _1, _2);
+        interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayerDynamic::interpVelCallback, this);
+        path_sub_ = g_nh.subscribe("path", 1, &CustomLayerDynamic::predictedBoatPath, this);
+        status_sub_ = g_nh.subscribe("move_base/status", 1, &CustomLayerDynamic::goalReached, this);
+        goal_sub_ = g_nh.subscribe("move_base/current_goal", 1, &CustomLayerDynamic::newGoal, this);
+        server_->setCallback(f_); 
     }
 
-    void CustomLayer::interpVelCallback(const dynamic_reconfigure::Config& vel) {
+    void CustomLayerDynamic::interpVelCallback(const dynamic_reconfigure::Config& vel) {
         interp_velocity_ = vel.doubles[0].value;
     }
 
-    void CustomLayer::predictedBoatPath(const nav_msgs::Path& path) {
+    void CustomLayerDynamic::predictedBoatPath(const nav_msgs::Path& path) {
       received_path_ = true;
       current_path_ = path;
     }
 
-    void CustomLayer::goalReached(const actionlib_msgs::GoalStatusArray& status) {
+    void CustomLayerDynamic::goalReached(const actionlib_msgs::GoalStatusArray& status) {
       for (unsigned int i=0; i<status.status_list.size(); i++){
         if (status.status_list[i].status==3) // PENDING 0, ACTIVE 1,PREEMPTED 2,SUCCEEDED 3, ABORTED 4,REJECTED 5,PREEMPTING 6,RECALLING 7,RECALLED 8,LOST 9
           received_path_ = false;
       }
     }
 
+    void CustomLayerDynamic::newGoal(const geometry_msgs::PoseStamped& goal) {
+      moved_boats_.clear();
+    }
+
     struct temp_boat {
       double dist;
       double time;
-      double stay_time;
     };
 
-    void CustomLayer::predictedBoat() {   // should, for each boat, remap it to the expected location
+    void CustomLayerDynamic::predictedBoat() {   // should, for each boat, remap it to the expected location
       // ROS_INFO("received_path_ is %d. \n", received_path_);
       double dist_boat_x, dist_boat_y, dist_boat, time_boat;
       tf::StampedTransform transform_d;
       std::string global_frame = layered_costmap_->getGlobalFrameID();
-      moved_boats_.clear();
       if (received_path_) {
         ROS_INFO("received_path_ found true. \n");
         // for each point in the path, calculate the time dory needs to get there, then determine if the boat is in a specified radius of that point
@@ -184,10 +187,10 @@ namespace social_navigation_layers
       ROS_INFO("Number of boats ini the moved_boats list: %i. \n", moved_boats_.size());
     }
 
-    void CustomLayer::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
+    void CustomLayerDynamic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
         std::list<social_navigation_layers::Boat>::iterator p_it;
-        CustomLayer::predictedBoat();
+        CustomLayerDynamic::predictedBoat();
         // ROS_INFO("Received time to boat is %f. \n", CustomLayer::predictedBoat(1.0,2.0));
 
         for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
@@ -205,7 +208,7 @@ namespace social_navigation_layers
         }
     }
 
-    void CustomLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j){
+    void CustomLayerDynamic::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j){
         boost::recursive_mutex::scoped_lock lock(lock_);
         if(!enabled_) return;
 
@@ -300,7 +303,7 @@ namespace social_navigation_layers
         }
     }
 
-    void CustomLayer::configure(CustomLayerConfig &config, uint32_t level) {
+    void CustomLayerDynamic::configure(CustomLayerDynamicConfig &config, uint32_t level) {
         cutoff_ = config.cutoff;
         amplitude_ = config.amplitude;
         covar_ = config.covariance;
