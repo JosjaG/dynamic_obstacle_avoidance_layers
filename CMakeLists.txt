@@ -26,7 +26,7 @@ generate_messages(
 generate_dynamic_reconfigure_options(
   # cfg/ProxemicLayer.cfg
   cfg/CustomLayerDynamic.cfg
-  # cfg/CustomLayerStatic.cfg
+  cfg/CustomLayerStatic.cfg
 )
 
 catkin_package(
@@ -39,13 +39,14 @@ include_directories(
   include ${catkin_INCLUDE_DIRS}
 )
 
+add_compile_options(-std=c++11)
 ## add cpp library
 add_library(social_layers 
             src/social_layer.cpp
             # src/proxemic_layer.cpp 
             # src/passing_layer.cpp
             src/custom_layer_dynamic.cpp
-            # src/custom_layer_static.cpp
+            src/custom_layer_static.cpp
 )
 add_dependencies(social_layers ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries(

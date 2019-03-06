@@ -23,15 +23,19 @@ namespace social_navigation_layers
 
     protected:
       void configure(CustomLayerStaticConfig &config, uint32_t level);
+      void timerCallback(const ros::TimerEvent&);
       void filterStatic();
+      int search(std::string id);
       double width_, height_;
       nav_msgs::Path current_path_;
-      struct static_obstacle {
+      struct static_obstacle_ {
         ros::Time received;
-        std::string id;
+        social_navigation_layers::Boat boat;
       };
-      struct static_obstacle static_obstacles_[];
+      std::vector<static_obstacle_> static_obstacles_;
+      // std::vector<social_navigation_layers::Boat> static_obstacles_;
       ros::Duration static_keep_time_;
+      ros::Timer timer_;
       dynamic_reconfigure::Server<CustomLayerStaticConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerStaticConfig>::CallbackType f_;
       tf::TransformListener listener_;
