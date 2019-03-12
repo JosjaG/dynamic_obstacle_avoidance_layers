@@ -59,16 +59,16 @@ namespace social_navigation_layers
     for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
       struct static_obstacle_ obstacle = *o_it;
       social_navigation_layers::Boat tpt;
-      geometry_msgs::PointStamped pt, opt;
+      geometry_msgs::PoseStamped pt, opt;
       std::string global_frame = layered_costmap_->getGlobalFrameID();
       if (ros::Time::now().toSec()-obstacle.received.toSec()<static_keep_time_.toSec()) {  
         try{
-          pt.point = obstacle.boat.position;
+          pt.pose = obstacle.boat.pose;
           pt.header.frame_id = boats_list_.header.frame_id;
-          tf_.transformPoint(global_frame, pt, opt);
-          tpt.position = opt.point;
+          tf_.transformPose(global_frame, pt, opt);
+          tpt.pose = opt.pose;
           tpt.size = obstacle.boat.size;
-          tf_.transformPoint(global_frame, pt, opt);
+          tf_.transformPose(global_frame, pt, opt);
           
           static_boats_.push_back(tpt);
         }
@@ -97,10 +97,10 @@ namespace social_navigation_layers
       double point_x = boat.size.x/2.0;
       double point_y = boat.size.y/2.0;
 
-      *min_x = std::min(*min_x, boat.position.x - point_x);
-      *min_y = std::min(*min_y, boat.position.y - point_y);
-      *max_x = std::max(*max_x, boat.position.x + point_x);
-      *max_y = std::max(*max_y, boat.position.y + point_y);
+      *min_x = std::min(*min_x, boat.pose.position.x - point_x);
+      *min_y = std::min(*min_y, boat.pose.position.y - point_y);
+      *max_x = std::max(*max_x, boat.pose.position.x + point_x);
+      *max_y = std::max(*max_y, boat.pose.position.y + point_y);
     }
   }
 
@@ -114,7 +114,7 @@ namespace social_navigation_layers
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
 
-      double cx = boat.position.x, cy = boat.position.y;
+      double cx = boat.pose.position.x, cy = boat.pose.position.y;
 
       double ox, oy;
       oy = cy - boat.size.y/2.0;
@@ -146,7 +146,48 @@ namespace social_navigation_layers
         end_y = max_j - dy;
 
       double bx = ox + res / 2,
-             by = oy + res / 2;
+               by = oy + res / 2;
+
+
+      double long_side = sqrt(pow(boat.size.x/2, 2) + pow(boat.size.y/2, 2));
+      double angle_orientation = atan2(boat.size.y/2, boat.size.x/2);
+      double angle_calc[2];
+      double roll, pitch, yaw;
+      geometry_msgs::Quaternion q = boat.pose.orientation;
+      tf::Quaternion tfq;
+      tf::quaternionMsgToTF(q, tfq);
+      tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      angle_calc[0] = yaw - angle_orientation; //0
+      angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
+      double dist_y_0 = long_side * std::sin(angle_calc[0]);
+      double dist_x_0 = long_side * std::cos(angle_calc[0]);
+      double dist_y_1 = long_side * std::cos(angle_calc[1]);
+      double dist_x_1 = long_side * std::sin(angle_calc[1]);
+
+      // Assuming the rectangle is represented by three points A,B,C, with AB and BC perpendicular, you only need to check
+      // the projections of the query point M on AB and BC:
+
+      // 0 <= dot(AB,AM) <= dot(AB,AB) &&
+      // 0 <= dot(BC,BM) <= dot(BC,BC)
+
+      // AB is vector AB, with coordinates (Bx-Ax,By-Ay), and dot(AB,AM) is the dot product of vectors AB and AM: ABx*AMx+ABy*AMy.
+      
+      double point0[2], point1[2], point2[2];
+      point0[0] = cx + dist_x_0;
+      point0[1] = cy + dist_y_0;
+      point1[0] = cx + dist_x_1;
+      point1[1] = cy + dist_y_1;
+      point2[0] = cx - dist_x_0;
+      point2[1] = cy - dist_y_0;
+      double AB[2], BC[2];
+      AB[0] = point1[0] - point0[0];
+      AB[1] = point1[1] - point0[1];
+      BC[0] = point2[0] - point1[0];
+      BC[1] = point2[1] - point1[1];
+      double dot_AB, dot_BC;
+      dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
+      dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
+      // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
 
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
@@ -156,10 +197,20 @@ namespace social_navigation_layers
 
           double x = bx+i*res, y = by+j*res;
           double a;
-          if ((fabs(x-cx)<(boat.size.x/2.0)) && (fabs(y-cy)<(boat.size.y/2.0))) {
+
+          double AP[2], BP[2];
+          AP[0] = x - point0[0];
+          AP[1] = y - point0[1];
+          BP[0] = x - point1[0];
+          BP[1] = y - point1[1];
+          double dot_ABAP, dot_BCBP;
+          dot_ABAP = AB[0]*AP[0] + AB[1]*AP[1];
+          dot_BCBP = BC[0]*BP[0] + BC[1]*BP[1];
+
+          if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC))) {
+            // ROS_INFO("dot_ABAP = %f, dot_BCBP = %f. \n", dot_ABAP, dot_BCBP);
             a = costmap_2d::LETHAL_OBSTACLE;
-          }
-          else {
+          } else {
             a = costmap_2d::FREE_SPACE;
           }
 
