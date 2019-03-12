@@ -21,6 +21,7 @@ namespace social_navigation_layers
       
       // virtual void updateBoundsFromPeople(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
       virtual void updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
+      // virtual void filterStatic(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
 
       bool isDiscretized() { return false; }
 

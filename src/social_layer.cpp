@@ -32,28 +32,28 @@ namespace social_navigation_layers
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
             social_navigation_layers::Boat& boat = boats_list_.boats[i];
             social_navigation_layers::Boat tpt;
-            geometry_msgs::PointStamped pt, opt;
+            geometry_msgs::PoseStamped pt, opt;
             
             try{
-              pt.point.x = boat.position.x;
-              pt.point.y = boat.position.y;
-              pt.point.z = boat.position.z;
+              pt.pose.position.x = boat.pose.position.x;
+              pt.pose.position.y = boat.pose.position.y;
+              pt.pose.position.z = boat.pose.position.z;
+              pt.pose.orientation = boat.pose.orientation;
               pt.header.frame_id = boats_list_.header.frame_id;
-              tf_.transformPoint(global_frame, pt, opt);
-              tpt.position.x = opt.point.x;
-              tpt.position.y = opt.point.y;
-              tpt.position.z = opt.point.z;
+              tf_.transformPose(global_frame, pt, opt);
+              tpt.pose = opt.pose;
 
-              pt.point.x += boat.velocity.x;
-              pt.point.y += boat.velocity.y;
-              pt.point.z += boat.velocity.z;
-              tf_.transformPoint(global_frame, pt, opt);
+              pt.pose.position.x += boat.velocity.x;
+              pt.pose.position.y += boat.velocity.y;
+              pt.pose.position.z += boat.velocity.z;
+              tf_.transformPose(global_frame, pt, opt);
               
-              tpt.velocity.x = opt.point.x - tpt.position.x;
-              tpt.velocity.y = opt.point.y - tpt.position.y;
-              tpt.velocity.z = opt.point.z - tpt.position.z;
+              tpt.pose.orientation = pt.pose.orientation;
+              tpt.velocity.x = opt.pose.position.x - tpt.pose.position.x;
+              tpt.velocity.y = opt.pose.position.y - tpt.pose.position.y;
+              tpt.velocity.z = opt.pose.position.z - tpt.pose.position.z;
               
-              transformed_boats_.push_back(tpt);
+              // transformed_boats_.push_back(tpt);
               
             }
             catch(tf::LookupException& ex) {
@@ -71,6 +71,7 @@ namespace social_navigation_layers
         }
         // updateBoundsFromPeople(min_x, min_y, max_x, max_y);
         updateBoundsFromBoats(min_x, min_y, max_x, max_y);
+        // filterStatic(min_x, min_y, max_x, max_y);
         if(first_time_){
             last_min_x_ = *min_x;
             last_min_y_ = *min_y;    

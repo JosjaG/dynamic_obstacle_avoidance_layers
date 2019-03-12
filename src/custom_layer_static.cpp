@@ -1,0 +1,228 @@
+#include <social_navigation_layers/custom_layer_static.h>
+#include <math.h>
+#include <angles/angles.h>
+#include <pluginlib/class_list_macros.h>
+#include <tf/transform_listener.h>
+#include <algorithm>
+PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayerStatic, costmap_2d::Layer)
+
+using costmap_2d::NO_INFORMATION;
+using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::FREE_SPACE;
+
+namespace social_navigation_layers
+{
+  int CustomLayerStatic::search(std::string id){
+    std::vector<static_obstacle_>::iterator result = std::find_if(
+      static_obstacles_.begin(),
+      static_obstacles_.end(),
+      [id](const static_obstacle_& s) { return s.boat.id == id; }
+    );
+    if (result!=static_obstacles_.end()) {
+      result->received = ros::Time::now();
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+
+  void CustomLayerStatic::onInitialize() {
+    SocialLayer::onInitialize();
+    ros::NodeHandle nh("~/" + name_), g_nh;
+    server_ = new dynamic_reconfigure::Server<CustomLayerStaticConfig>(nh);
+    f_ = boost::bind(&CustomLayerStatic::configure, this, _1, _2);
+    timer_ = nh.createTimer(ros::Duration(3.0), &CustomLayerStatic::timerCallback, this);
+    server_->setCallback(f_);
+  }
+
+  void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
+    boats_list_.boats.clear();
+  }
+
+  void CustomLayerStatic::filterStatic() {
+    for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
+      social_navigation_layers::Boat& boat = boats_list_.boats[i];
+      double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
+      if (boat_vel==0.0) {
+        if (CustomLayerStatic::search(boat.id)==-1) {
+          struct static_obstacle_ obstacle;
+          obstacle.boat = boat;
+          obstacle.received = ros::Time::now();
+          static_obstacles_.push_back(obstacle);
+        }
+      }
+    }
+    std::vector<static_obstacle_>::iterator o_it;   
+    int it = 0;
+    int count = 0;
+    static_boats_.clear();
+    for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
+      struct static_obstacle_ obstacle = *o_it;
+      social_navigation_layers::Boat tpt;
+      geometry_msgs::PoseStamped pt, opt;
+      std::string global_frame = layered_costmap_->getGlobalFrameID();
+      if (ros::Time::now().toSec()-obstacle.received.toSec()<static_keep_time_.toSec()) {  
+        try{
+          pt.pose = obstacle.boat.pose;
+          pt.header.frame_id = boats_list_.header.frame_id;
+          tf_.transformPose(global_frame, pt, opt);
+          tpt.pose = opt.pose;
+          tpt.size = obstacle.boat.size;
+          tf_.transformPose(global_frame, pt, opt);
+          
+          static_boats_.push_back(tpt);
+        }
+        catch(tf::LookupException& ex) {
+          ROS_ERROR("No Transform available Error: %s\n", ex.what());
+          continue;
+        }
+      } else if (static_obstacles_.size() > 0) {
+        std::swap(static_obstacles_[it], static_obstacles_.back());
+        count++;
+      }
+      it++;
+    }
+    while (count>0) {
+      static_obstacles_.pop_back();
+      count--;
+    }
+  }
+
+  void CustomLayerStatic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) {
+    std::list<social_navigation_layers::Boat>::iterator p_it;
+    CustomLayerStatic::filterStatic();
+
+    for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
+      social_navigation_layers::Boat boat = *p_it;
+      double point_x = boat.size.x/2.0;
+      double point_y = boat.size.y/2.0;
+
+      *min_x = std::min(*min_x, boat.pose.position.x - point_x);
+      *min_y = std::min(*min_y, boat.pose.position.y - point_y);
+      *max_x = std::max(*max_x, boat.pose.position.x + point_x);
+      *max_y = std::max(*max_y, boat.pose.position.y + point_y);
+    }
+  }
+
+  void CustomLayerStatic::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
+    boost::recursive_mutex::scoped_lock lock(lock_);
+    if(!enabled_) return;
+    std::list<social_navigation_layers::Boat>::iterator p_it;
+    costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
+    double res = costmap->getResolution();
+
+    for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
+      social_navigation_layers::Boat boat = *p_it;
+
+      double cx = boat.pose.position.x, cy = boat.pose.position.y;
+
+      double ox, oy;
+      oy = cy - boat.size.y/2.0;
+      ox = cx - boat.size.x/2.0;
+
+      int dx, dy;
+      costmap->worldToMapNoBounds(ox, oy, dx, dy);
+
+      int start_x = 0, start_y=0, end_x=boat.size.x/res, end_y = boat.size.y/res;
+      
+      if(dx < 0)
+        start_x = -dx;
+      else if(dx + boat.size.x > costmap->getSizeInCellsX())
+        end_x = std::max(0, (int)costmap->getSizeInCellsX() - dx);
+
+      if((int)(start_x+dx) < min_i)
+        start_x = min_i - dx;
+      if((int)(end_x+dx) > max_i)
+        end_x = max_i - dx;
+
+      if(dy < 0)
+        start_y = -dy;
+      else if(dy + boat.size.y > costmap->getSizeInCellsY())
+        end_y = std::max(0, (int) costmap->getSizeInCellsY() - dy);
+
+      if((int)(start_y+dy) < min_j)
+        start_y = min_j - dy;
+      if((int)(end_y+dy) > max_j)
+        end_y = max_j - dy;
+
+      double bx = ox + res / 2,
+               by = oy + res / 2;
+
+
+      double long_side = sqrt(pow(boat.size.x/2, 2) + pow(boat.size.y/2, 2));
+      double angle_orientation = atan2(boat.size.y/2, boat.size.x/2);
+      double angle_calc[2];
+      double roll, pitch, yaw;
+      geometry_msgs::Quaternion q = boat.pose.orientation;
+      tf::Quaternion tfq;
+      tf::quaternionMsgToTF(q, tfq);
+      tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      angle_calc[0] = yaw - angle_orientation; //0
+      angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
+      double dist_y_0 = long_side * std::sin(angle_calc[0]);
+      double dist_x_0 = long_side * std::cos(angle_calc[0]);
+      double dist_y_1 = long_side * std::cos(angle_calc[1]);
+      double dist_x_1 = long_side * std::sin(angle_calc[1]);
+
+      // Assuming the rectangle is represented by three points A,B,C, with AB and BC perpendicular, you only need to check
+      // the projections of the query point M on AB and BC:
+
+      // 0 <= dot(AB,AM) <= dot(AB,AB) &&
+      // 0 <= dot(BC,BM) <= dot(BC,BC)
+
+      // AB is vector AB, with coordinates (Bx-Ax,By-Ay), and dot(AB,AM) is the dot product of vectors AB and AM: ABx*AMx+ABy*AMy.
+      
+      double point0[2], point1[2], point2[2];
+      point0[0] = cx + dist_x_0;
+      point0[1] = cy + dist_y_0;
+      point1[0] = cx + dist_x_1;
+      point1[1] = cy + dist_y_1;
+      point2[0] = cx - dist_x_0;
+      point2[1] = cy - dist_y_0;
+      double AB[2], BC[2];
+      AB[0] = point1[0] - point0[0];
+      AB[1] = point1[1] - point0[1];
+      BC[0] = point2[0] - point1[0];
+      BC[1] = point2[1] - point1[1];
+      double dot_AB, dot_BC;
+      dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
+      dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
+      // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
+
+      for(int i=start_x;i<end_x;i++) {
+        for(int j=start_y;j<end_y;j++) {
+          unsigned char old_cost = costmap->getCost(i+dx, j+dy);
+          if(old_cost == costmap_2d::NO_INFORMATION)
+            continue;
+
+          double x = bx+i*res, y = by+j*res;
+          double a;
+
+          double AP[2], BP[2];
+          AP[0] = x - point0[0];
+          AP[1] = y - point0[1];
+          BP[0] = x - point1[0];
+          BP[1] = y - point1[1];
+          double dot_ABAP, dot_BCBP;
+          dot_ABAP = AB[0]*AP[0] + AB[1]*AP[1];
+          dot_BCBP = BC[0]*BP[0] + BC[1]*BP[1];
+
+          if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC))) {
+            // ROS_INFO("dot_ABAP = %f, dot_BCBP = %f. \n", dot_ABAP, dot_BCBP);
+            a = costmap_2d::LETHAL_OBSTACLE;
+          } else {
+            a = costmap_2d::FREE_SPACE;
+          }
+
+          unsigned char cvalue = (unsigned char) a;
+          costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
+        }
+      }
+    }
+  }
+
+  void CustomLayerStatic::configure(CustomLayerStaticConfig &config, uint32_t level) {
+    static_keep_time_ = ros::Duration(60*60*config.keep_time);
+    enabled_ = config.enabled;
+  }
+};
