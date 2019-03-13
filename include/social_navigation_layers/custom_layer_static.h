@@ -24,6 +24,7 @@ namespace social_navigation_layers
     protected:
       void configure(CustomLayerStaticConfig &config, uint32_t level);
       void timerCallback(const ros::TimerEvent&);
+      void removeOldObstacles();
       void filterStatic();
       int search(std::string id);
       double width_, height_;
