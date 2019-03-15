@@ -21,7 +21,7 @@ void filterBoats() {
     for(o_it = obstacle_list.begin(); o_it != obstacle_list.end(); ++o_it) {
         struct obstacle obstacle = *o_it;
         social_navigation_layers::Boat boat;
-        boat.id = "boat_" + std::to_string(count);
+        boat.id = "boat_" + std::to_string((rand() % 1000));
         if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
             obstacle.closest_point = obstacle.min_point;
         boat.pose.position.x = (obstacle.max_point.x + obstacle.min_point.x)/2;
@@ -32,20 +32,20 @@ void filterBoats() {
         boat.size.y = std::max(boat.size.y, 0.5);
         // boat.size.x = std::max(sqrt(pow((obstacle.min_point.x - obstacle.closest_point.x), 2) + pow((obstacle.min_point.y - obstacle.closest_point.y), 2)), 0.5);
         // boat.size.y = std::max(sqrt(pow((obstacle.closest_point.x - obstacle.max_point.x), 2) + pow((obstacle.closest_point.y - obstacle.max_point.y), 2)), 0.5);
-        angle = atan2(obstacle.closest_point.y-obstacle.min_point.y, obstacle.closest_point.x-obstacle.min_point.x);
-        while (angle > M_PI/2 || angle < 0) {
-            if (angle < 0) {
-                angle+=M_PI/2;
-                double tmp_size = boat.size.x;
-                boat.size.x = boat.size.y;
-                boat.size.y = tmp_size;
-            }
-            else {
-                angle-=M_PI/2;
-                double tmp_size = boat.size.x;
-                boat.size.x = boat.size.y;
-                boat.size.y = tmp_size;
-            }
+        angle = atan2(fabs(obstacle.min_point.y - obstacle.closest_point.y), fabs(obstacle.min_point.x - obstacle.closest_point.x));
+        while (angle < M_PI/2) {
+            // if (angle < 0) {
+            double tmp_size = boat.size.x;
+            boat.size.x = boat.size.y;
+            boat.size.y = tmp_size;
+            angle+=M_PI/2;
+            // }
+            // else {
+            //     double tmp_size = boat.size.x;
+            //     boat.size.x = boat.size.y;
+            //     boat.size.y = tmp_size;
+            //     angle-=M_PI/2;
+            // }
         }
         // boat.pose.orientation.w = 1.0;
         // detected_boats_.push_back(boat);
@@ -56,7 +56,7 @@ void filterBoats() {
         broadcaster_->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", boat.id));
         boat.pose.orientation = tf::createQuaternionMsgFromYaw(angle);
         // boat.pose.orientation.w = q;
-        ROS_INFO("Boat id = %s, boat size x,y = %f, %f. \n", boat.id, boat.size.x, boat.size.y);
+        ROS_INFO("Boat id = %s, boat size x,y = %f, %f, orientation = %f. \n", boat.id.c_str(), boat.size.x, boat.size.y, angle);
 
         detected_boats_.push_back(boat);
         count++;
@@ -87,11 +87,12 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     if (scan->ranges[0] < scan->range_max) {
         in_object = true;
     }
+    double closest_entity = scan->range_max;
     // https://github.com/wg-perception/people/blob/ccf714b37f3482a938df6fb424910279a45cb978/leg_detector/src/leg_detector.cpp#L683
     for (int i=1; i < scan->ranges.size(); ++i) {
         if (in_object) {
             // lidar_filtered.ranges.push_back(scan->ranges[i]);
-            if (scan->ranges[i] < scan->ranges[i-1]) {
+            if (scan->ranges[i] < closest_entity) {
                 if (i<(num_scans/2)) { // Slightly nasty assumption that angle_min = angle_max
                     temp_obstacle.closest_point.x = transform_d.getOrigin().x() - cos(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
                     temp_obstacle.closest_point.y = transform_d.getOrigin().y() - sin(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
@@ -99,6 +100,7 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                     temp_obstacle.closest_point.x = transform_d.getOrigin().x() - cos(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];
                     temp_obstacle.closest_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
                 }
+                closest_entity = scan->ranges[i];
             }
             if (fabs(scan->ranges[i+1] - scan->ranges[i]) > max_jump) {
                 if (i<(num_scans/2)) { // Slightly nasty assumption that angle_min = angle_max
