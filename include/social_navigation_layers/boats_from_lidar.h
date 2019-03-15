@@ -34,7 +34,6 @@ double max_jump = 2.32;
 social_navigation_layers::Boats boats_list_;
 std::vector<social_navigation_layers::Boat> detected_boats_;
 std::vector<obstacle> obstacle_list;
-tf::StampedTransform transform_d;
 
 
 #endif
