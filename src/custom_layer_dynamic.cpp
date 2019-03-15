@@ -211,7 +211,7 @@ namespace social_navigation_layers
 
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
-            double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor );
+            double point = 0.5*std::max(boat.size.x, boat.size.y)*boat_get_radius(cutoff_, amplitude_, covar_ * factor );
 
             *min_x = std::min(*min_x, boat.pose.position.x - point);
             *min_y = std::min(*min_y, boat.pose.position.y - point);

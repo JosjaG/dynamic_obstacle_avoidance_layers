@@ -97,10 +97,10 @@ namespace social_navigation_layers
       double point_x = boat.size.x/2.0;
       double point_y = boat.size.y/2.0;
 
-      *min_x = std::min(*min_x, boat.pose.position.x - point_x);
-      *min_y = std::min(*min_y, boat.pose.position.y - point_y);
-      *max_x = std::max(*max_x, boat.pose.position.x + point_x);
-      *max_y = std::max(*max_y, boat.pose.position.y + point_y);
+      *min_x = std::min(*min_x, boat.pose.position.x - 3 * boat.size.x);
+      *min_y = std::min(*min_y, boat.pose.position.y - 3 * boat.size.y);
+      *max_x = std::max(*max_x, boat.pose.position.x + 3 * boat.size.x);
+      *max_y = std::max(*max_y, boat.pose.position.y + 3 * boat.size.y);
     }
   }
 
@@ -114,16 +114,33 @@ namespace social_navigation_layers
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
 
-      double cx = boat.pose.position.x, cy = boat.pose.position.y;
+      double cx = boat.pose.position.x;
+      double cy = boat.pose.position.y;
+      ROS_INFO("X position boat = %f. \n", cx);
+
+      double roll, pitch, yaw;
+      geometry_msgs::Quaternion q = boat.pose.orientation;
+      tf::Quaternion tfq;
+      tf::quaternionMsgToTF(q, tfq);
+      tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
       double ox, oy;
-      oy = cy - boat.size.y/2.0;
+      if(sin(yaw)>0.0)
       ox = cx - boat.size.x/2.0;
+          oy = cy - boat_size;
+      else
+          oy = cy + (boat_size) * sin(yaw) - boat_size;
+
+      if(cos(yaw)>=0.0)
+          ox = cx - boat_size;
+      else
+          ox = cx + (boat_size) * cos(yaw) - boat_size;
 
       int dx, dy;
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
 
-      int start_x = 0, start_y=0, end_x=boat.size.x/res, end_y = boat.size.y/res;
+      int start_x = 0, start_y=0, end_x=(3 * boat_size) / res, end_y = (3 * boat_size) / res;
       
       if(dx < 0)
         start_x = -dx;
@@ -145,18 +162,16 @@ namespace social_navigation_layers
       if((int)(end_y+dy) > max_j)
         end_y = max_j - dy;
 
-      double bx = ox + res / 2,
-               by = oy + res / 2;
-
+      double bx = ox + res / 2, by = oy + res / 2;
 
       double long_side = sqrt(pow(boat.size.x/2, 2) + pow(boat.size.y/2, 2));
       double angle_orientation = atan2(boat.size.y/2, boat.size.x/2);
       double angle_calc[2];
-      double roll, pitch, yaw;
-      geometry_msgs::Quaternion q = boat.pose.orientation;
-      tf::Quaternion tfq;
-      tf::quaternionMsgToTF(q, tfq);
-      tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      // double roll, pitch, yaw;
+      // geometry_msgs::Quaternion q = boat.pose.orientation;
+      // tf::Quaternion tfq;
+      // tf::quaternionMsgToTF(q, tfq);
+      // tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
       angle_calc[0] = yaw - angle_orientation; //0
       angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
       double dist_y_0 = long_side * std::sin(angle_calc[0]);
