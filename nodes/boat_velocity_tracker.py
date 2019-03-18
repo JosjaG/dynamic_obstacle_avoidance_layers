@@ -76,6 +76,8 @@ class VelocityTracker(object):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             self.publish()
+
+            self.boats = {}
             rate.sleep()
 
     def publish(self):
