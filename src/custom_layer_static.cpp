@@ -56,6 +56,7 @@ namespace social_navigation_layers
     int it = 0;
     int count = 0;
     static_boats_.clear();
+    ROS_INFO("Size within filter = %lu. \n", static_obstacles_.size());
     for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
       struct static_obstacle_ obstacle = *o_it;
       social_navigation_layers::Boat tpt;
@@ -94,8 +95,6 @@ namespace social_navigation_layers
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
-      double point_x = boat.size.x/2.0;
-      double point_y = boat.size.y/2.0;
 
       *min_x = std::min(*min_x, boat.pose.position.x - 3 * boat.size.x);
       *min_y = std::min(*min_y, boat.pose.position.y - 3 * boat.size.y);
@@ -110,13 +109,14 @@ namespace social_navigation_layers
     std::list<social_navigation_layers::Boat>::iterator p_it;
     costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
     double res = costmap->getResolution();
+    // ROS_INFO("Size within updater = %lu. \n", static_boats_.size());
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
 
       double cx = boat.pose.position.x;
       double cy = boat.pose.position.y;
-      ROS_INFO("X position boat = %f. \n", cx);
+      // ROS_INFO("X position boat = %f. \n", cx);
 
       double roll, pitch, yaw;
       geometry_msgs::Quaternion q = boat.pose.orientation;
@@ -127,7 +127,6 @@ namespace social_navigation_layers
 
       double ox, oy;
       if(sin(yaw)>0.0)
-      ox = cx - boat.size.x/2.0;
           oy = cy - boat_size;
       else
           oy = cy + (boat_size) * sin(yaw) - boat_size;
@@ -141,7 +140,7 @@ namespace social_navigation_layers
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
 
       int start_x = 0, start_y=0, end_x=(3 * boat_size) / res, end_y = (3 * boat_size) / res;
-      
+
       if(dx < 0)
         start_x = -dx;
       else if(dx + boat.size.x > costmap->getSizeInCellsX())
@@ -172,6 +171,8 @@ namespace social_navigation_layers
       // tf::Quaternion tfq;
       // tf::quaternionMsgToTF(q, tfq);
       // tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      // ROS_INFO("yaw = %f. \n", yaw);
+
       angle_calc[0] = yaw - angle_orientation; //0
       angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
       double dist_y_0 = long_side * std::sin(angle_calc[0]);
@@ -203,7 +204,10 @@ namespace social_navigation_layers
       dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
       dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
       // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-
+      // ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
+      // ROS_INFO("bx = %f, by = %f. \n", bx, by);
+      // end_y = 700;
+      // end_x = 700;
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
           unsigned char old_cost = costmap->getCost(i+dx, j+dy);

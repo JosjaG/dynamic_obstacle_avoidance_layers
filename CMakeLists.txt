@@ -47,8 +47,23 @@ add_library(social_layers
             # src/passing_layer.cpp
             src/custom_layer_dynamic.cpp
             src/custom_layer_static.cpp
+            # nodes/boats_from_lidar.cpp
 )
-add_dependencies(social_layers ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+add_executable(boats_from_lidar nodes/boats_from_lidar.cpp)
+
+add_dependencies(
+    social_layers ${${PROJECT_NAME}_EXPORTED_TARGETS}
+    boats_from_lidar ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(boats_from_lidar ${catkin_LIBRARIES})
+
+install(TARGETS
+  boats_from_lidar
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 target_link_libraries(
     social_layers ${catkin_LIBRARIES}
 )
