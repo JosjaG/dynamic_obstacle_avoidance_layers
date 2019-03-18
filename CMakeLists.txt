@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   roscpp
   geometry_msgs
+  kalman_filter
 )
 
 add_message_files(
@@ -30,7 +31,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure people_msgs pluginlib roscpp
+    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure people_msgs pluginlib roscpp kalman_filter
     INCLUDE_DIRS include
     LIBRARIES social_layers
 )

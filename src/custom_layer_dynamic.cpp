@@ -101,7 +101,7 @@ namespace social_navigation_layers
               }
               social_navigation_layers::Boat& boat = boats_list_.boats[j];
               double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-              if (boat_vel!=0.0) {
+              if (boat_vel>0.1) {
                 max_d = 0.75*std::max(boat.size.x, boat.size.y);
                 predicted_boat.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
                 predicted_boat.position.y = boat.pose.position.y + time_boat*boat.velocity.y;
@@ -121,7 +121,7 @@ namespace social_navigation_layers
         for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
           social_navigation_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-          if (boat_vel!=0.0) {
+          if (boat_vel>0.1) {
             social_navigation_layers::Boat tpt;
             geometry_msgs::PoseStamped pt, opt;
               if (temp_boats[i].dist>0.0){          
@@ -156,7 +156,7 @@ namespace social_navigation_layers
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
           social_navigation_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-          if (boat_vel!=0.0) {
+          if (boat_vel>0.1) {
           // position boat wrt dory --> distance between boat and dory
             try {
                 listener_.waitForTransform("base_link", boat.id, ros::Time(0), ros::Duration(1.0) );
