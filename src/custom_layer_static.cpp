@@ -109,14 +109,14 @@ namespace social_navigation_layers
     std::list<social_navigation_layers::Boat>::iterator p_it;
     costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
     double res = costmap->getResolution();
-    ROS_INFO("Size within updater = %lu. \n", static_boats_.size());
+    // ROS_INFO("Size within updater = %lu. \n", static_boats_.size());
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
 
       double cx = boat.pose.position.x;
       double cy = boat.pose.position.y;
-      ROS_INFO("X position boat = %f. \n", cx);
+      // ROS_INFO("X position boat = %f. \n", cx);
 
       double roll, pitch, yaw;
       geometry_msgs::Quaternion q = boat.pose.orientation;
@@ -137,7 +137,7 @@ namespace social_navigation_layers
           ox = cx + (boat_size) * cos(yaw) - boat_size;
       // ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
       // ROS_INFO("width = %f, height = %f. \n", boat.size.x/res, boat.size.y/res);
-      ROS_INFO("ox position boat = %f. \n", ox);
+      // ROS_INFO("ox position boat = %f. \n", ox);
 
       int dx, dy;
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
@@ -175,6 +175,7 @@ namespace social_navigation_layers
       // tf::Quaternion tfq;
       // tf::quaternionMsgToTF(q, tfq);
       // tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
+      // ROS_INFO("yaw = %f. \n", yaw);
       angle_calc[0] = yaw - angle_orientation; //0
       angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
       double dist_y_0 = long_side * std::sin(angle_calc[0]);
@@ -206,8 +207,8 @@ namespace social_navigation_layers
       dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
       dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
       // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-      ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
-      ROS_INFO("bx = %f, by = %f. \n", bx, by);
+      // ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
+      // ROS_INFO("bx = %f, by = %f. \n", bx, by);
       // end_y = 700;
       // end_x = 700;
       for(int i=start_x;i<end_x;i++) {

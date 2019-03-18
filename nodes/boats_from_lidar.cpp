@@ -1,10 +1,25 @@
 #include <social_navigation_layers/boats_from_lidar.h>
 
+void matchBoats() {
+    if (prev_boats_.size() != 0) {
+        std::vector<social_navigation_layers::Boat>::iterator o_it;
+        for(o_it = prev_boats_.begin(); o_it != prev_boats_.end(); ++o_it) {
+            social_navigation_layers::Boat boat = *o_it;
 
-// void updateVelocities() {
-//     for ...
-
-// }
+            std::string token = boat.id.substr(boat.id.find("_")+1, boat.id.size());
+            ROS_INFO("Token = %s. \n", token.c_str());
+            std::vector<obstacle>::iterator o_it;
+            for(o_it = obstacle_list.begin(); o_it != obstacle_list.end(); ++o_it) {
+                struct obstacle obstacle = *o_it;
+                ROS_INFO("Diff = %f. \n", fabs(obstacle.lidar_loc - std::stoi(token)));
+                if (fabs(obstacle.lidar_loc - std::stoi(token)) < near_range_) {
+                    obstacle.lidar_loc = std::stoi(token);
+                }
+            }
+        }
+    }
+    // You could also implement the velocity here, by editing the boat entity instead of the obstacle
+}
 
 void filterBoats() {
     tf::Transform transform;
@@ -16,12 +31,13 @@ void filterBoats() {
             obstacle_list[0].closest_point = obstacle_list.back().closest_point;
         obstacle_list.pop_back();
     }
+    matchBoats();
     std::vector<obstacle>::iterator o_it;
-    int count = 0;
     for(o_it = obstacle_list.begin(); o_it != obstacle_list.end(); ++o_it) {
         struct obstacle obstacle = *o_it;
         social_navigation_layers::Boat boat;
-        boat.id = "boat_" + std::to_string((rand() % 1000));
+        boat.id = "boat_" + std::to_string(obstacle.lidar_loc);
+        ROS_INFO("id = %s. \n", boat.id.c_str());
         if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
             obstacle.closest_point = obstacle.min_point;
         boat.pose.position.x = (obstacle.max_point.x + obstacle.min_point.x)/2;
@@ -30,45 +46,38 @@ void filterBoats() {
         boat.size.y = std::max(fabs(obstacle.min_point.y - obstacle.closest_point.y), fabs(obstacle.min_point.y - obstacle.max_point.y));
         boat.size.x = std::max(boat.size.x, 0.5);
         boat.size.y = std::max(boat.size.y, 0.5);
-        // boat.size.x = std::max(sqrt(pow((obstacle.min_point.x - obstacle.closest_point.x), 2) + pow((obstacle.min_point.y - obstacle.closest_point.y), 2)), 0.5);
-        // boat.size.y = std::max(sqrt(pow((obstacle.closest_point.x - obstacle.max_point.x), 2) + pow((obstacle.closest_point.y - obstacle.max_point.y), 2)), 0.5);
         angle = atan2(fabs(obstacle.min_point.y - obstacle.closest_point.y), fabs(obstacle.min_point.x - obstacle.closest_point.x));
-        while (angle < M_PI/2) {
-            // if (angle < 0) {
-            double tmp_size = boat.size.x;
-            boat.size.x = boat.size.y;
-            boat.size.y = tmp_size;
-            angle+=M_PI/2;
-            // }
-            // else {
-            //     double tmp_size = boat.size.x;
-            //     boat.size.x = boat.size.y;
-            //     boat.size.y = tmp_size;
-            //     angle-=M_PI/2;
-            // }
+        while (angle > M_PI/2 || angle < 0.0) {
+            if (angle < 0) {
+                double tmp_size = boat.size.x;
+                boat.size.x = boat.size.y;
+                boat.size.y = tmp_size;
+                angle+=M_PI/2;
+            }
+            else {
+                double tmp_size = boat.size.x;
+                boat.size.x = boat.size.y;
+                boat.size.y = tmp_size;
+                angle-=M_PI/2;
+            }
         }
-        // boat.pose.orientation.w = 1.0;
-        // detected_boats_.push_back(boat);
         transform.setOrigin(tf::Vector3(boat.pose.position.x, boat.pose.position.y, 0.0));
         tf::Quaternion q;
         q.setRPY(0, 0, angle);
         transform.setRotation(q);
         broadcaster_->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", boat.id));
         boat.pose.orientation = tf::createQuaternionMsgFromYaw(angle);
-        // boat.pose.orientation.w = q;
         ROS_INFO("Boat id = %s, boat size x,y = %f, %f, orientation = %f. \n", boat.id.c_str(), boat.size.x, boat.size.y, angle);
-
         detected_boats_.push_back(boat);
-        count++;
     }
     boats_list_.boats = detected_boats_;
+    prev_boats_ = detected_boats_;
     boats_list_.header.frame_id = "map";
     boats_pub_.publish(boats_list_);
 }
 
 void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     bool in_object = false;
-    // double prev = 1000;
     struct obstacle temp_obstacle;
     obstacle_list.clear();
     tf::StampedTransform transform_d;
@@ -81,17 +90,12 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     double roll, pitch, yaw;
     tf::Matrix3x3(transform_d.getRotation()).getEulerYPR(yaw,pitch,roll);
     int num_scans = (scan->angle_min + scan->angle_max)/scan->angle_increment;
-    ROS_INFO("Made it to before the for loop. \n");
-    // sensor_msgs::LaserScan lidar_filtered = *scan;
-    // lidar_filtered.ranges.clear();
     if (scan->ranges[0] < scan->range_max) {
         in_object = true;
     }
     double closest_entity = scan->range_max;
-    // https://github.com/wg-perception/people/blob/ccf714b37f3482a938df6fb424910279a45cb978/leg_detector/src/leg_detector.cpp#L683
     for (int i=1; i < scan->ranges.size(); ++i) {
         if (in_object) {
-            // lidar_filtered.ranges.push_back(scan->ranges[i]);
             if (scan->ranges[i] < closest_entity) {
                 if (i<(num_scans/2)) { // Slightly nasty assumption that angle_min = angle_max
                     temp_obstacle.closest_point.x = transform_d.getOrigin().x() - cos(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
@@ -110,8 +114,7 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                     temp_obstacle.max_point.x = transform_d.getOrigin().x() - cos(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];
                     temp_obstacle.max_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
                 }
-                ROS_INFO("CLOSEST: scan_x = %f, scan_y = %f. \n", temp_obstacle.closest_point.x, temp_obstacle.closest_point.y);
-                ROS_INFO("MAX: scan_x = %f, scan_y = %f. \n", temp_obstacle.max_point.x, temp_obstacle.max_point.y);
+                temp_obstacle.lidar_loc = (temp_obstacle.lidar_loc + i) / 2.0;
                 if ((-scan->range_max < temp_obstacle.min_point.x && -scan->range_max < temp_obstacle.closest_point.x && -scan->range_max < temp_obstacle.max_point.x) &&
                  (temp_obstacle.min_point.x < scan->range_max && temp_obstacle.closest_point.x < scan->range_max && temp_obstacle.max_point.x < scan->range_max))
                     obstacle_list.push_back(temp_obstacle);
@@ -119,8 +122,6 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 temp_obstacle = {};
             }
         } else if (fabs(scan->ranges[i-1] - scan->ranges[i]) > max_jump) {
-            // ROS_INFO("Found first object. \n");
-            // lidar_filtered.ranges.push_back(scan->ranges[i]);
             if (i<(num_scans/2)) { // Slightly nasty assumption that angle_min = angle_max
                 temp_obstacle.min_point.x = transform_d.getOrigin().x() - cos(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
                 temp_obstacle.min_point.y = transform_d.getOrigin().y() - sin(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
@@ -129,14 +130,10 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 temp_obstacle.min_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
             }
             ROS_INFO("MIN: scan_x = %f, scan_y = %f. \n", temp_obstacle.min_point.x, temp_obstacle.min_point.y);
-            // ROS_INFO("lidar_x = %f, lidar_y = %f, scan_x = %f, scan_y = %f. \n", transform_d.getOrigin().x(), transform_d.getOrigin().y(), sin(yaw - (num_scans/2 - i)*scan->angle_increment), cos(yaw - (num_scans/2 - i)*scan->angle_increment));
+            temp_obstacle.lidar_loc = i;
             in_object = true;
-        } //else {
-            // ROS_INFO("Got into the else. \n");
-        // }
+        }
     }
-    // ROS_INFO("First obstacle min_x = %f, min_y = %f, number of obstacles: %lu. \n", obstacle_list[0].min_point.x, obstacle_list[0].min_point.y, obstacle_list.size());
-    // lidar_pub_.publish(lidar_filtered);
     if (obstacle_list.size() != 0)
         filterBoats();
 }
@@ -148,9 +145,8 @@ int main(int argc, char** argv)
   ros::NodeHandle node;
 
   // instantiate publishers & subscribers
-  boats_pub_ = node.advertise<social_navigation_layers::Boats>("/boats", 1);
+  boats_pub_ = node.advertise<social_navigation_layers::Boats>("/boats_detected", 1);
   laser_sub_ = node.subscribe("/scan", 1, lidarCallback);
-  // lidar_pub_ = node.advertise<sensor_msgs::LaserScan>("/lidar_boat_point", 1);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
