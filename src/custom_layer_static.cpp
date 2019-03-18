@@ -135,9 +135,6 @@ namespace social_navigation_layers
           ox = cx - boat_size;
       else
           ox = cx + (boat_size) * cos(yaw) - boat_size;
-      // ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
-      // ROS_INFO("width = %f, height = %f. \n", boat.size.x/res, boat.size.y/res);
-      // ROS_INFO("ox position boat = %f. \n", ox);
 
       int dx, dy;
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
@@ -166,7 +163,6 @@ namespace social_navigation_layers
 
       double bx = ox + res / 2, by = oy + res / 2;
 
-      // end_y+=100;
       double long_side = sqrt(pow(boat.size.x/2, 2) + pow(boat.size.y/2, 2));
       double angle_orientation = atan2(boat.size.y/2, boat.size.x/2);
       double angle_calc[2];
@@ -176,6 +172,7 @@ namespace social_navigation_layers
       // tf::quaternionMsgToTF(q, tfq);
       // tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
       // ROS_INFO("yaw = %f. \n", yaw);
+
       angle_calc[0] = yaw - angle_orientation; //0
       angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
       double dist_y_0 = long_side * std::sin(angle_calc[0]);
