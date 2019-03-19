@@ -101,7 +101,7 @@ namespace social_navigation_layers
               }
               social_navigation_layers::Boat& boat = boats_list_.boats[j];
               double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-              if (boat_vel!=0.0) {
+              if (boat_vel>0.1) {
                 max_d = 0.75*std::max(boat.size.x, boat.size.y);
                 predicted_boat.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
                 predicted_boat.position.y = boat.pose.position.y + time_boat*boat.velocity.y;
@@ -121,7 +121,7 @@ namespace social_navigation_layers
         for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
           social_navigation_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-          if (boat_vel!=0.0) {
+          if (boat_vel>0.1) {
             social_navigation_layers::Boat tpt;
             geometry_msgs::PoseStamped pt, opt;
               if (temp_boats[i].dist>0.0){          
@@ -156,7 +156,7 @@ namespace social_navigation_layers
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
           social_navigation_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-          if (boat_vel!=0.0) {
+          if (boat_vel>0.1) {
           // position boat wrt dory --> distance between boat and dory
             try {
                 listener_.waitForTransform("base_link", boat.id, ros::Time(0), ros::Duration(1.0) );
@@ -211,7 +211,7 @@ namespace social_navigation_layers
 
             double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
             double factor = 1.0 + mag * factor_;
-            double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor );
+            double point = 0.5*std::max(boat.size.x, boat.size.y)*boat_get_radius(cutoff_, amplitude_, covar_ * factor );
 
             *min_x = std::min(*min_x, boat.pose.position.x - point);
             *min_y = std::min(*min_y, boat.pose.position.y - point);
@@ -263,8 +263,11 @@ namespace social_navigation_layers
         else
             ox = cx + (point-base) * cos(angle) - base;
 
+        ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
+        ROS_INFO("width = %u, height = %u. \n", width, height);
         int dx, dy;
         costmap->worldToMapNoBounds(ox, oy, dx, dy);
+        ROS_INFO("dx = %u, dy = %u. \n", dx, dy);
 
         int start_x = 0, start_y=0, end_x=width, end_y = height;
         if(dx < 0)
@@ -281,11 +284,13 @@ namespace social_navigation_layers
             start_y = -dy;
         else if(dy + height > costmap->getSizeInCellsY())
             end_y = std::max(0, (int) costmap->getSizeInCellsY() - dy);
+        ROS_INFO("size x = %u, size y = %u. \n", ((int)costmap->getSizeInCellsX()), ((int) costmap->getSizeInCellsY()));
 
         if((int)(start_y+dy) < min_j)
             start_y = min_j - dy;
         if((int)(end_y+dy) > max_j)
             end_y = max_j - dy;
+        ROS_INFO("min j = %u, max j = %u. \n", min_j, max_j);
 
         double bx = ox + res / 2,
                by = oy + res / 2;
@@ -330,7 +335,7 @@ namespace social_navigation_layers
         dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
         dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
         // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-
+        ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
         for(int i=start_x;i<end_x;i++){
           for(int j=start_y;j<end_y;j++){
             unsigned char old_cost = costmap->getCost(i+dx, j+dy);
