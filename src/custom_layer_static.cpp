@@ -43,7 +43,7 @@ namespace social_navigation_layers
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
       social_navigation_layers::Boat& boat = boats_list_.boats[i];
       double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
-      if (boat_vel==0.0) {
+      if (boat_vel<0.1) {
         if (CustomLayerStatic::search(boat.id)==-1) {
           struct static_obstacle_ obstacle;
           obstacle.boat = boat;

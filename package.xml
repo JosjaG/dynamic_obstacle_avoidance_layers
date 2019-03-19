@@ -17,6 +17,7 @@
   <depend>people_msgs</depend>
   <depend>pluginlib</depend>
   <depend>roscpp</depend>
+  <depend>kalman_filter</depend>
 
   <export>
     <costmap_2d plugin="${prefix}/costmap_plugins.xml"/>
