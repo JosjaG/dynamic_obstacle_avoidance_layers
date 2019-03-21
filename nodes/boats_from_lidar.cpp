@@ -37,6 +37,14 @@ void filterBoats() {
         bool is_line = false;
         double angle;
         struct obstacle obstacle = *o_it;
+        // Check if at least two of the three coordinates are marked as obstacles by the static map layer
+        // In that case, pre-mapped obstacles are not also marked as new obstacles in the boats topic
+        int static_map_cost[3];
+        static_map_cost[0] = (obstacle.min_point.x - map_.info.origin.position.x)/map_.info.resolution + ((obstacle.min_point.y - map_.info.origin.position.y)/map_.info.resolution * map_.info.width);
+        static_map_cost[1] = (obstacle.closest_point.x - map_.info.origin.position.x)/map_.info.resolution + ((obstacle.closest_point.y - map_.info.origin.position.y)/map_.info.resolution * map_.info.width);
+        static_map_cost[2] = (obstacle.max_point.x - map_.info.origin.position.x)/map_.info.resolution + ((obstacle.max_point.y - map_.info.origin.position.y)/map_.info.resolution * map_.info.width);
+        if ((static_map_cost[0] == 100 && static_map_cost[1] == 100) || (static_map_cost[1] == 100 && static_map_cost[2] == 100) || (static_map_cost[0] == 100 && static_map_cost[2] == 100))
+            return;
         social_navigation_layers::Boat boat;
         boat.id = "boat_" + std::to_string(obstacle.lidar_loc);
         // ROS_INFO("id = %s. \n", boat.id.c_str());
@@ -161,6 +169,10 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
         filterBoats();
 }
 
+void mapCallback(const nav_msgs::OccupancyGrid& map) {
+    map_ = map;
+}
+
 int main(int argc, char** argv)
 {
   // Initialize ROS
@@ -170,6 +182,7 @@ int main(int argc, char** argv)
   // instantiate publishers & subscribers
   boats_pub_ = node.advertise<social_navigation_layers::Boats>("/boats_detected", 1);
   laser_sub_ = node.subscribe("/scan", 1, lidarCallback);
+  map_sub_ = node.subscribe("map", 1, mapCallback);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
