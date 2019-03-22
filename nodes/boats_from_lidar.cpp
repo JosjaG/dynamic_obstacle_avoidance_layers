@@ -37,59 +37,58 @@ void filterBoats() {
         bool is_line = false;
         double angle;
         struct obstacle obstacle = *o_it;
-        social_navigation_layers::Boat boat;
-        boat.id = "boat_" + std::to_string(obstacle.lidar_loc);
-        // ROS_INFO("id = %s. \n", boat.id.c_str());
+        // Check if at least two of the three coordinates are marked as obstacles by the static map layer
+        // In that case, pre-mapped obstacles are not also marked as new obstacles in the boats topic
+        int a = (int) ((obstacle.min_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.min_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
+        int b = (int) ((obstacle.closest_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.closest_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
+        int c = (int) ((obstacle.max_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.max_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
+        if (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100) {
+            social_navigation_layers::Boat boat;
+            boat.id = "boat_" + std::to_string(obstacle.lidar_loc);
 
-        if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
-            obstacle.closest_point = obstacle.min_point;
+            if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
+                obstacle.closest_point = obstacle.min_point;
 
-        boat.pose.position.x = (obstacle.max_point.x + obstacle.min_point.x)/2;
-        boat.pose.position.y = (obstacle.max_point.y + obstacle.min_point.y)/2;
+            boat.pose.position.x = (obstacle.max_point.x + obstacle.min_point.x)/2;
+            boat.pose.position.y = (obstacle.max_point.y + obstacle.min_point.y)/2;
 
-        // check if the three points form a rectangle or a line:
-        double AB[2];
-        AB[0] = obstacle.max_point.x - obstacle.min_point.x;
-        AB[1] = obstacle.max_point.y - obstacle.min_point.y;
-        double BC[2];
-        BC[0] = obstacle.closest_point.x - obstacle.min_point.x;
-        BC[1] = obstacle.closest_point.y - obstacle.min_point.y;
-        double area = AB[0]*BC[1] - AB[1]*BC[0];
-        // ROS_INFO("Area = %f. \n", fabs(area));
-        if (fabs(area) < 2.0) {
-            is_line = true;
-            ROS_INFO("id = %s. \n", boat.id.c_str());
-        }
-
-        if (is_line) {
-            angle = atan2(AB[1], AB[0]);
-            double length = sqrt(pow((obstacle.min_point.x - obstacle.max_point.x), 2) + pow((obstacle.min_point.y - obstacle.max_point.y), 2));
-            if ((angle > -(M_PI/4.0) && angle < (M_PI/4.0)) || (angle > (3.0*M_PI/4.0) && angle < (-3.0*M_PI/4.0))) {
-                boat.size.x = length;
-                // boat.size.y = fabs(AB[1]);
-            } else {
-                // boat.size.x = fabs(AB[0]); 
-                boat.size.y = length;
-                angle+=(M_PI/2.0);
+            // check if the three points form a rectangle or a line:
+            double AB[2];
+            AB[0] = obstacle.max_point.x - obstacle.min_point.x;
+            AB[1] = obstacle.max_point.y - obstacle.min_point.y;
+            double BC[2];
+            BC[0] = obstacle.closest_point.x - obstacle.min_point.x;
+            BC[1] = obstacle.closest_point.y - obstacle.min_point.y;
+            double area = AB[0]*BC[1] - AB[1]*BC[0];
+            if (fabs(area) < 2.0) {
+                is_line = true;
+                ROS_INFO("id = %s. \n", boat.id.c_str());
             }
-            // if (boat.pose.position.y > 0.0)
-            //     angle+=(M_PI/2.0);
-        } else {
-            angle = atan2((obstacle.min_point.y - obstacle.closest_point.y), (obstacle.min_point.x - obstacle.closest_point.x));
-            boat.size.x = sqrt(pow((obstacle.min_point.x - obstacle.closest_point.x), 2) + pow((obstacle.min_point.y - obstacle.closest_point.y), 2));
-            boat.size.y = sqrt(pow((obstacle.closest_point.x - obstacle.max_point.x), 2) + pow((obstacle.closest_point.y - obstacle.max_point.y), 2));
-        }        
-        // ROS_INFO("Angle = %f, Size y = %f, Size x = %f. \n", angle, boat.size.y, boat.size.x); 
-        boat.size.x = std::max(boat.size.x, 0.5);
-        boat.size.y = std::max(boat.size.y, 0.5);
-        transform.setOrigin(tf::Vector3(boat.pose.position.x, boat.pose.position.y, 0.0));
-        tf::Quaternion q;
-        q.setRPY(0, 0, (angle - (M_PI/2)));
-        transform.setRotation(q);
-        broadcaster_->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", boat.id));
-        boat.pose.orientation = tf::createQuaternionMsgFromYaw(angle);
-        // ROS_INFO("Boat id = %s, boat size x,y = %f, %f, orientation = %f. \n", boat.id.c_str(), boat.size.x, boat.size.y, angle);
-        detected_boats_.push_back(boat);
+
+            if (is_line) {
+                angle = atan2(AB[1], AB[0]);
+                double length = sqrt(pow((obstacle.min_point.x - obstacle.max_point.x), 2) + pow((obstacle.min_point.y - obstacle.max_point.y), 2));
+                if ((angle > -(M_PI/4.0) && angle < (M_PI/4.0)) || (angle > (3.0*M_PI/4.0) && angle < (-3.0*M_PI/4.0))) {
+                    boat.size.x = length;
+                } else {
+                    boat.size.y = length;
+                    angle+=(M_PI/2.0);
+                }
+            } else {
+                angle = atan2((obstacle.min_point.y - obstacle.closest_point.y), (obstacle.min_point.x - obstacle.closest_point.x));
+                boat.size.x = sqrt(pow((obstacle.min_point.x - obstacle.closest_point.x), 2) + pow((obstacle.min_point.y - obstacle.closest_point.y), 2));
+                boat.size.y = sqrt(pow((obstacle.closest_point.x - obstacle.max_point.x), 2) + pow((obstacle.closest_point.y - obstacle.max_point.y), 2));
+            }        
+            boat.size.x = std::max(boat.size.x, 0.5);
+            boat.size.y = std::max(boat.size.y, 0.5);
+            transform.setOrigin(tf::Vector3(boat.pose.position.x, boat.pose.position.y, 0.0));
+            tf::Quaternion q;
+            q.setRPY(0, 0, (angle - (M_PI/2)));
+            transform.setRotation(q);
+            broadcaster_->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", boat.id));
+            boat.pose.orientation = tf::createQuaternionMsgFromYaw(angle);
+            detected_boats_.push_back(boat);
+        }
     }
     boats_list_.boats = detected_boats_;
     prev_boats_ = detected_boats_;
@@ -152,13 +151,17 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 temp_obstacle.min_point.x = transform_d.getOrigin().x() - cos(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];
                 temp_obstacle.min_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
             }
-            // ROS_INFO("MIN: scan_x = %f, scan_y = %f. \n", temp_obstacle.min_point.x, temp_obstacle.min_point.y);
+            ROS_INFO("MIN: scan_x = %f, scan_y = %f. \n", temp_obstacle.min_point.x, temp_obstacle.min_point.y);
             temp_obstacle.lidar_loc = i;
             in_object = true;
         }
     }
     if (obstacle_list.size() != 0)
         filterBoats();
+}
+
+void mapCallback(const nav_msgs::OccupancyGrid& map) {
+    map_ = map;
 }
 
 int main(int argc, char** argv)
@@ -170,6 +173,7 @@ int main(int argc, char** argv)
   // instantiate publishers & subscribers
   boats_pub_ = node.advertise<social_navigation_layers::Boats>("/boats_detected", 1);
   laser_sub_ = node.subscribe("/scan", 1, lidarCallback);
+  map_sub_ = node.subscribe("dory/map", 1, mapCallback);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);

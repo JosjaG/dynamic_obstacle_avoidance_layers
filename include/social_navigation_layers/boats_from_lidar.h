@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Point.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
@@ -13,13 +14,14 @@ void filterBoats();
 void publishBoats();
 void matchBoats();
 void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
+void mapCallback(const nav_msgs::OccupancyGrid& map);
 
 tf::TransformListener* listener_;
 tf::TransformBroadcaster* broadcaster_;
 
 // Topic and node names and message objects
 ros::Publisher boats_pub_, lidar_pub_;
-ros::Subscriber laser_sub_;
+ros::Subscriber laser_sub_, map_sub_;
 
 struct obstacle {
 	int lidar_loc;
@@ -31,6 +33,7 @@ struct obstacle {
 double max_jump = 2.32;
 double near_range_ = 8;
 social_navigation_layers::Boats boats_list_;
+nav_msgs::OccupancyGrid map_;
 std::vector<social_navigation_layers::Boat> detected_boats_;
 std::vector<social_navigation_layers::Boat> prev_boats_;
 std::vector<obstacle> obstacle_list;

@@ -1,6 +1,7 @@
 #include <social_navigation_layers/custom_layer_static.h>
 #include <math.h>
 #include <angles/angles.h>
+#include <sensor_msgs/LaserScan.h>
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
 #include <algorithm>
@@ -37,6 +38,18 @@ namespace social_navigation_layers
 
   void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
     boats_list_.boats.clear();
+  }
+
+  void CustomLayerStatic::removeOldObstacles() {
+    boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
+    sensor_msgs::LaserScan laser_data;
+    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.5));
+    if(laser_msg != NULL){
+      laser_data = *laser_msg;
+    }
+    // https://github.com/tue-robotics/ed_sensor_integration/blob/346f671a28c817216dede3cf611eeac2c8241af5/src/laser/laser_plugin.cpp#L332
+    // Should only be called when Dory is near a known static obstacle
+    // If this funtion is triggered, the LiDAR should be used to update the static obstacle entry (either remove, keep or change location/size)
   }
 
   void CustomLayerStatic::filterStatic() {
