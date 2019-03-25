@@ -13,7 +13,8 @@ using costmap_2d::FREE_SPACE;
 
 namespace social_navigation_layers
 {
-  int CustomLayerStatic::search(std::string id){
+  int CustomLayerStatic::search(social_navigation_layers::Boat& boat_in){
+    std::string id = boat_in.id;
     std::vector<static_obstacle_>::iterator result = std::find_if(
       static_obstacles_.begin(),
       static_obstacles_.end(),
@@ -21,6 +22,7 @@ namespace social_navigation_layers
     );
     if (result!=static_obstacles_.end()) {
       result->received = ros::Time::now();
+      result->boat = boat_in;
       return 1;
     } else {
       return -1;
@@ -57,7 +59,7 @@ namespace social_navigation_layers
       social_navigation_layers::Boat& boat = boats_list_.boats[i];
       double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
       if (boat_vel<0.1) {
-        if (CustomLayerStatic::search(boat.id)==-1) {
+        if (CustomLayerStatic::search(boat)==-1) {
           struct static_obstacle_ obstacle;
           obstacle.boat = boat;
           obstacle.received = ros::Time::now();

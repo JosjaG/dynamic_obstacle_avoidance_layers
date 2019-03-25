@@ -12,7 +12,7 @@
 
 void filterBoats();
 void publishBoats();
-void matchBoats();
+const char * matchBoats(int lidar);
 void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 void mapCallback(const nav_msgs::OccupancyGrid& map);
 
