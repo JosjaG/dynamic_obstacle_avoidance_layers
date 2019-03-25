@@ -40,18 +40,47 @@ namespace social_navigation_layers
 
   void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
     boats_list_.boats.clear();
+    // ROS_INFO("Checking if any obstacle can be removed. \n");
+    CustomLayerStatic::removeOldObstacles();
   }
 
   void CustomLayerStatic::removeOldObstacles() {
+    double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
-    sensor_msgs::LaserScan laser_data;
-    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.5));
+    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("/scan",ros::Duration(0.5));
     if(laser_msg != NULL){
       laser_data = *laser_msg;
     }
-    // https://github.com/tue-robotics/ed_sensor_integration/blob/346f671a28c817216dede3cf611eeac2c8241af5/src/laser/laser_plugin.cpp#L332
-    // Should only be called when Dory is near a known static obstacle
-    // If this funtion is triggered, the LiDAR should be used to update the static obstacle entry (either remove, keep or change location/size)
+    if (laser_data.ranges.size() > 0) {
+      tf::StampedTransform transform_d;
+      std::vector<static_obstacle_> static_obstacles_keep;
+      int buffer = laser_data.ranges.size()/100;
+      std::vector<static_obstacle_>::iterator o_it;
+      for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
+        struct static_obstacle_ obstacle = *o_it;
+        try {
+          listener_.waitForTransform("map", obstacle.boat.id, ros::Time(0), ros::Duration(1.0));
+          listener_.lookupTransform("map", obstacle.boat.id, ros::Time(0), transform_d);
+        } catch (tf::TransformException ex) {
+          ROS_ERROR("%s",ex.what());
+        }
+        double transform_length = sqrt(pow(transform_d.getOrigin().x(), 2.0) + pow(transform_d.getOrigin().y(), 2.0));
+        int lidar_index = obstacle.boat.lidar_index;
+        buffer = buffer + laser_data.range_max/laser_data.ranges[lidar_index];
+        for (int i=(lidar_index - buffer); i < (lidar_index + buffer); ++i) {
+          if (fabs(laser_data.ranges[i] - (transform_length - std::min(obstacle.boat.size.x, obstacle.boat.size.y))) < tolerance) {
+            static_obstacles_keep.push_back(obstacle);
+            break;
+          }
+        }
+      }
+      static_obstacles_.clear();
+      std::vector<static_obstacle_>::iterator s_it;
+      for(s_it = static_obstacles_keep.begin(); s_it != static_obstacles_keep.end(); ++s_it) {
+        struct static_obstacle_ obstacle = *s_it;
+        static_obstacles_.push_back(obstacle);
+      }
+    }
   }
 
   void CustomLayerStatic::filterStatic() {
@@ -181,13 +210,6 @@ namespace social_navigation_layers
       double long_side = sqrt(pow(boat.size.x/2, 2) + pow(boat.size.y/2, 2));
       double angle_orientation = atan2(boat.size.y/2, boat.size.x/2);
       double angle_calc[2];
-      // double roll, pitch, yaw;
-      // geometry_msgs::Quaternion q = boat.pose.orientation;
-      // tf::Quaternion tfq;
-      // tf::quaternionMsgToTF(q, tfq);
-      // tf::Matrix3x3(tfq).getEulerYPR(yaw,pitch,roll);
-      // ROS_INFO("yaw = %f. \n", yaw);
-
       angle_calc[0] = yaw - angle_orientation; //0
       angle_calc[1] = M_PI/2 - yaw - angle_orientation; //1 
       double dist_y_0 = long_side * std::sin(angle_calc[0]);
@@ -218,11 +240,6 @@ namespace social_navigation_layers
       double dot_AB, dot_BC;
       dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
       dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
-      // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-      // ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
-      // ROS_INFO("bx = %f, by = %f. \n", bx, by);
-      // end_y = 700;
-      // end_x = 700;
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
           unsigned char old_cost = costmap->getCost(i+dx, j+dy);
