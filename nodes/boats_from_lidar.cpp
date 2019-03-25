@@ -1,25 +1,17 @@
 #include <social_navigation_layers/boats_from_lidar.h>
 
-void matchBoats() {
+const char * matchBoats(int lidar) {
     if (prev_boats_.size() != 0) {
         std::vector<social_navigation_layers::Boat>::iterator o_it;
         for(o_it = prev_boats_.begin(); o_it != prev_boats_.end(); ++o_it) {
             social_navigation_layers::Boat boat = *o_it;
-
-            std::string token = boat.id.substr(boat.id.find("_")+1, boat.id.size());
-            // ROS_INFO("Token = %s. \n", token.c_str());
-            std::vector<obstacle>::iterator o_it;
-            for(o_it = obstacle_list.begin(); o_it != obstacle_list.end(); ++o_it) {
-                struct obstacle obstacle = *o_it;
-                // ROS_INFO("Diff = %f. \n", fabs(obstacle.lidar_loc - std::stoi(token)));
-                if (fabs(obstacle.lidar_loc - std::stoi(token)) < near_range_) {
-                    obstacle.lidar_loc = std::stoi(token);
-                }
-                // ROS_INFO("Matchboats - Cloy = %f, Clox = %f. \n", obstacle.closest_point.y, obstacle.closest_point.x); 
+            if (abs(lidar - boat.lidar_index) < near_range_) {
+                const char *str = boat.id.c_str();
+                return str;
             }
         }
     }
-    // You could also implement the velocity here, by editing the boat entity instead of the obstacle
+    return "new";
 }
 
 void filterBoats() {
@@ -30,7 +22,6 @@ void filterBoats() {
             obstacle_list[0].closest_point = obstacle_list.back().closest_point;
         obstacle_list.pop_back();
     }
-    matchBoats();
     std::vector<obstacle>::iterator o_it;
     for(o_it = obstacle_list.begin(); o_it != obstacle_list.end(); ++o_it) {
         tf::Transform transform;
@@ -44,8 +35,11 @@ void filterBoats() {
         int c = (int) ((obstacle.max_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.max_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
         if (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100) {
             social_navigation_layers::Boat boat;
-            boat.id = "boat_" + std::to_string(obstacle.lidar_loc);
-
+            if (strcmp(matchBoats(obstacle.lidar_loc), "new") == 0)
+                boat.id = "boat_" + std::to_string(rand() % 100000);
+            else
+                boat.id = matchBoats(obstacle.lidar_loc);
+            boat.lidar_index = obstacle.lidar_loc;
             if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
                 obstacle.closest_point = obstacle.min_point;
 

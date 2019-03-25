@@ -8,7 +8,7 @@ from social_navigation_layers.msg import Boat, Boats
 from kalman_filter import Kalman
 
 def subtract(v1, v2):
-    return Vector3(v1.position.x - v2.position.x, v1.position.y - v2.position.y, v1.position.z - v2.position.z)
+    return Vector3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z)
 
 def scale(v, s):
     v.x *= s
@@ -27,7 +27,8 @@ class BoatEstimate(object):
         self.det_boat = msg
         self.stamp = stamp
 
-        ivel = subtract(self.det_boat.pose, last.pose)
+        ivel = subtract(self.det_boat.pose.position, last.pose.position)
+        print ivel
         if ((self.stamp - last_stamp).to_sec() != 0.0):
             time = (self.stamp - last_stamp).to_sec()
             scale(ivel, 1.0 / time)
@@ -56,7 +57,9 @@ class BoatEstimate(object):
 class VelocityTracker(object):
     def __init__(self):
         self.boats = {}
-        self.TIMEOUT = rospy.Duration(rospy.get_param('~timeout', 1.0))
+        self.keep_dict = {}
+        self.boat_received_time = rospy.get_time()
+        self.TIMEOUT = rospy.get_param('~timeout', 3.0)
         self.sub = rospy.Subscriber('/boats_detected',
                                     Boats,
                                     self.bm_cb)
@@ -65,19 +68,26 @@ class VelocityTracker(object):
                                     queue_size=10)
 
     def bm_cb(self, msg):
+        self.keep_dict = {}
+        self.boat_received_time = rospy.get_time()
         for bm in msg.boats:
+            self.keep_dict[bm.id] = bm
             if bm.id in self.boats:
                 self.boats[bm.id].update(bm, msg.header.stamp)
             else:
                 b = BoatEstimate(bm, msg.header.stamp)
                 self.boats[bm.id] = b
 
+
     def spin(self):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             self.publish()
-
-            self.boats = {}
+            for boat in self.boats.keys():
+                if boat not in self.keep_dict:
+                    del self.boats[boat]
+            if (rospy.get_time() - self.boat_received_time) > self.TIMEOUT:
+                self.boats = {}
             rate.sleep()
 
     def publish(self):

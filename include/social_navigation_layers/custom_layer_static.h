@@ -26,7 +26,7 @@ namespace social_navigation_layers
       void timerCallback(const ros::TimerEvent&);
       void removeOldObstacles();
       void filterStatic();
-      int search(std::string id);
+      int search(social_navigation_layers::Boat& boat_in);
       double width_, height_;
       nav_msgs::Path current_path_;
       struct static_obstacle_ {
