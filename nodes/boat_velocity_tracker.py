@@ -77,7 +77,6 @@ class VelocityTracker(object):
                 b = BoatEstimate(bm, msg.header.stamp)
                 self.boats[bm.id] = b
 
-
     def spin(self):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
