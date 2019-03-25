@@ -57,7 +57,6 @@ class BoatEstimate(object):
 class VelocityTracker(object):
     def __init__(self):
         self.boats = {}
-        self.keep_dict = {}
         self.boat_received_time = rospy.get_time()
         self.TIMEOUT = rospy.get_param('~timeout', 3.0)
         self.sub = rospy.Subscriber('/boats_detected',
