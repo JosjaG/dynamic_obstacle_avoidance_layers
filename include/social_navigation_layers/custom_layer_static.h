@@ -4,12 +4,12 @@
 #include <social_navigation_layers/social_layer.h>
 #include <dynamic_reconfigure/server.h>
 #include <nav_msgs/Path.h>
+#include <sensor_msgs/LaserScan.h>
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <social_navigation_layers/Boats.h>
 #include <social_navigation_layers/Boat.h>
 #include <social_navigation_layers/CustomLayerStaticConfig.h>
 
-int search(struct static_obstacle array[], char* Word);
 namespace social_navigation_layers
 {
   class CustomLayerStatic : public SocialLayer
@@ -28,13 +28,13 @@ namespace social_navigation_layers
       void filterStatic();
       int search(social_navigation_layers::Boat& boat_in);
       double width_, height_;
+      sensor_msgs::LaserScan laser_data;
       nav_msgs::Path current_path_;
       struct static_obstacle_ {
         ros::Time received;
         social_navigation_layers::Boat boat;
       };
       std::vector<static_obstacle_> static_obstacles_;
-      // std::vector<social_navigation_layers::Boat> static_obstacles_;
       ros::Duration static_keep_time_;
       ros::Timer timer_;
       dynamic_reconfigure::Server<CustomLayerStaticConfig>* server_;
