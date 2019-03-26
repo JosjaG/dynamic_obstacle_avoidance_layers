@@ -54,10 +54,8 @@ void filterBoats() {
             BC[0] = obstacle.closest_point.x - obstacle.min_point.x;
             BC[1] = obstacle.closest_point.y - obstacle.min_point.y;
             double area = AB[0]*BC[1] - AB[1]*BC[0];
-            if (fabs(area) < 2.0) {
+            if (fabs(area) < 2.0)
                 is_line = true;
-                ROS_INFO("id = %s. \n", boat.id.c_str());
-            }
 
             if (is_line) {
                 angle = atan2(AB[1], AB[0]);
@@ -132,7 +130,6 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 if ((-scan->range_max < temp_obstacle.min_point.x && -scan->range_max < temp_obstacle.closest_point.x && -scan->range_max < temp_obstacle.max_point.x) &&
                  (temp_obstacle.min_point.x < scan->range_max && temp_obstacle.closest_point.x < scan->range_max && temp_obstacle.max_point.x < scan->range_max))
                     obstacle_list.push_back(temp_obstacle);
-                // ROS_INFO("CLOS: scan_x = %f, scan_y = %f. \n", temp_obstacle.closest_point.x, temp_obstacle.closest_point.y);
                 in_object = false;
                 temp_obstacle = {};
                 closest_entity = scan->range_max;
@@ -145,7 +142,6 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 temp_obstacle.min_point.x = transform_d.getOrigin().x() - cos(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];
                 temp_obstacle.min_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
             }
-            ROS_INFO("MIN: scan_x = %f, scan_y = %f. \n", temp_obstacle.min_point.x, temp_obstacle.min_point.y);
             temp_obstacle.lidar_loc = i;
             in_object = true;
         }
@@ -165,14 +161,14 @@ int main(int argc, char** argv)
   ros::NodeHandle node;
 
   // instantiate publishers & subscribers
-  boats_pub_ = node.advertise<social_navigation_layers::Boats>("/boats_detected", 1);
-  laser_sub_ = node.subscribe("/scan", 1, lidarCallback);
-  map_sub_ = node.subscribe("dory/map", 1, mapCallback);
+  boats_pub_ = node.advertise<social_navigation_layers::Boats>("boats_detected", 1);
+  laser_sub_ = node.subscribe("scan", 1, lidarCallback);
+  map_sub_ = node.subscribe("map", 1, mapCallback);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
 
-  double loop_rate = 1.0;
+  double loop_rate = 2.0;
   ros::Rate rate(loop_rate);
 
   while (ros::ok()) {

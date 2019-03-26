@@ -38,6 +38,7 @@ namespace social_navigation_layers
         f_ = boost::bind(&CustomLayerDynamic::configure, this, _1, _2);
         interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayerDynamic::interpVelCallback, this);
         path_sub_ = g_nh.subscribe("path", 1, &CustomLayerDynamic::predictedBoatPath, this);
+        timer_ = g_nh.createTimer(ros::Duration(5.2), &CustomLayerDynamic::timerCallback, this);
         status_sub_ = g_nh.subscribe("move_base/status", 1, &CustomLayerDynamic::goalReached, this);
         goal_sub_ = g_nh.subscribe("move_base/current_goal", 1, &CustomLayerDynamic::newGoal, this);
         server_->setCallback(f_); 
@@ -59,7 +60,13 @@ namespace social_navigation_layers
       }
     }
 
+    void CustomLayerDynamic::timerCallback(const ros::TimerEvent&) {
+      boost::recursive_mutex::scoped_lock lock(lock_);
+      moved_boats_.clear();
+    }
+
     void CustomLayerDynamic::newGoal(const geometry_msgs::PoseStamped& goal) {
+      boost::recursive_mutex::scoped_lock lock(lock_);
       moved_boats_.clear();
     }
 

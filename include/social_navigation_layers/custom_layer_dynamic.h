@@ -30,9 +30,11 @@ namespace social_navigation_layers
       void predictedBoatPath(const nav_msgs::Path& path);
       void goalReached(const actionlib_msgs::GoalStatusArray& status);
       void predictedBoat();
+      void timerCallback(const ros::TimerEvent&);
       void newGoal(const geometry_msgs::PoseStamped& goal);
       double cutoff_, amplitude_, covar_, factor_, interp_velocity_;
       bool received_path_;
+      ros::Timer timer_;
       nav_msgs::Path current_path_;
       dynamic_reconfigure::Server<CustomLayerDynamicConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerDynamicConfig>::CallbackType f_;

@@ -59,7 +59,7 @@ class VelocityTracker(object):
         self.boats = {}
         self.boat_received_time = rospy.get_time()
         self.TIMEOUT = rospy.get_param('~timeout', 3.0)
-        self.sub = rospy.Subscriber('/boats_detected',
+        self.sub = rospy.Subscriber('boats_detected',
                                     Boats,
                                     self.bm_cb)
         self.bpub = rospy.Publisher('/boats',
@@ -78,7 +78,7 @@ class VelocityTracker(object):
                 self.boats[bm.id] = b
 
     def spin(self):
-        rate = rospy.Rate(1)
+        rate = rospy.Rate(2)
         while not rospy.is_shutdown():
             self.publish()
             for boat in self.boats.keys():
