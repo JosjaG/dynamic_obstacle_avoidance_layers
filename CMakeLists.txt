@@ -31,7 +31,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure pluginlib roscpp kalman_filter # people_msgs
+    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure pluginlib roscpp kalman_filter # people_msgs pluginlib roscpp kalman_filter
     INCLUDE_DIRS include
     LIBRARIES social_layers
 )
