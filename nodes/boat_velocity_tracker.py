@@ -28,7 +28,6 @@ class BoatEstimate(object):
         self.stamp = stamp
 
         ivel = subtract(self.det_boat.pose.position, last.pose.position)
-        print ivel
         if ((self.stamp - last_stamp).to_sec() != 0.0):
             time = (self.stamp - last_stamp).to_sec()
             scale(ivel, 1.0 / time)
@@ -48,6 +47,7 @@ class BoatEstimate(object):
     def get_boat(self):
         b = Boat()
         b.id = self.id()
+        b.lidar_index = self.det_boat.lidar_index
         b.pose = self.det_boat.pose
         b.velocity = self.velocity()
         b.size = self.det_boat.size
