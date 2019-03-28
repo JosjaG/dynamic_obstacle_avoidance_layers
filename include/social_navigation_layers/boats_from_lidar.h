@@ -30,8 +30,8 @@ struct obstacle {
   geometry_msgs::Point max_point;
 };
 
-double max_jump = 2.32;
-double near_range_ = 8;
+double max_jump, min_size, min_obstacle_size;
+int near_range;
 social_navigation_layers::Boats boats_list_;
 nav_msgs::OccupancyGrid map_;
 std::vector<social_navigation_layers::Boat> detected_boats_;

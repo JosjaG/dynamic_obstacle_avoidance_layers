@@ -47,7 +47,7 @@ namespace social_navigation_layers
   void CustomLayerStatic::removeOldObstacles() {
     double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
-    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("/scan",ros::Duration(0.5));
+    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.5));
     if(laser_msg != NULL){
       laser_data = *laser_msg;
     }
