@@ -186,9 +186,10 @@ int main(int argc, char** argv)
     min_obstacle_size = 0.1;
   // instantiate publishers & subscribers
   boats_pub_ = node.advertise<social_navigation_layers::Boats>("boats_detected", 1);
+//  laser_sub_ = node.subscribe("scan", 1, lidarCallback);
+//  map_sub_ = node.subscribe("map", 1, mapCallback);
   map_sub_ = node.subscribe("clara/map", 1, mapCallback);
   laser_sub_ = node.subscribe("/clara/scan", 1, lidarCallback);
-
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
 

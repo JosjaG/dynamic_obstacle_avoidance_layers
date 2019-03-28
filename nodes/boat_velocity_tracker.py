@@ -78,7 +78,7 @@ class VelocityTracker(object):
                 self.boats[bm.id] = b
 
     def spin(self):
-        rate = rospy.Rate(2)
+        rate = rospy.Rate(0.5)
         while not rospy.is_shutdown():
             self.publish()
             for boat in self.boats.keys():
