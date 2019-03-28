@@ -38,6 +38,7 @@ namespace social_navigation_layers
         f_ = boost::bind(&CustomLayerDynamic::configure, this, _1, _2);
         interp_vel_sub_ = g_nh.subscribe("interpolator/parameter_updates", 1, &CustomLayerDynamic::interpVelCallback, this);
         path_sub_ = g_nh.subscribe("path", 1, &CustomLayerDynamic::predictedBoatPath, this);
+        timer_ = g_nh.createTimer(ros::Duration(5.2), &CustomLayerDynamic::timerCallback, this);
         status_sub_ = g_nh.subscribe("move_base/status", 1, &CustomLayerDynamic::goalReached, this);
         goal_sub_ = g_nh.subscribe("move_base/current_goal", 1, &CustomLayerDynamic::newGoal, this);
         server_->setCallback(f_); 
@@ -59,7 +60,13 @@ namespace social_navigation_layers
       }
     }
 
+    void CustomLayerDynamic::timerCallback(const ros::TimerEvent&) {
+      boost::recursive_mutex::scoped_lock lock(lock_);
+      moved_boats_.clear();
+    }
+
     void CustomLayerDynamic::newGoal(const geometry_msgs::PoseStamped& goal) {
+      boost::recursive_mutex::scoped_lock lock(lock_);
       moved_boats_.clear();
     }
 
@@ -263,11 +270,11 @@ namespace social_navigation_layers
         else
             ox = cx + (point-base) * cos(angle) - base;
 
-        ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
-        ROS_INFO("width = %u, height = %u. \n", width, height);
+        // ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
+        // ROS_INFO("width = %u, height = %u. \n", width, height);
         int dx, dy;
         costmap->worldToMapNoBounds(ox, oy, dx, dy);
-        ROS_INFO("dx = %u, dy = %u. \n", dx, dy);
+        // ROS_INFO("dx = %u, dy = %u. \n", dx, dy);
 
         int start_x = 0, start_y=0, end_x=width, end_y = height;
         if(dx < 0)
@@ -284,13 +291,13 @@ namespace social_navigation_layers
             start_y = -dy;
         else if(dy + height > costmap->getSizeInCellsY())
             end_y = std::max(0, (int) costmap->getSizeInCellsY() - dy);
-        ROS_INFO("size x = %u, size y = %u. \n", ((int)costmap->getSizeInCellsX()), ((int) costmap->getSizeInCellsY()));
+        // ROS_INFO("size x = %u, size y = %u. \n", ((int)costmap->getSizeInCellsX()), ((int) costmap->getSizeInCellsY()));
 
         if((int)(start_y+dy) < min_j)
             start_y = min_j - dy;
         if((int)(end_y+dy) > max_j)
             end_y = max_j - dy;
-        ROS_INFO("min j = %u, max j = %u. \n", min_j, max_j);
+        // ROS_INFO("min j = %u, max j = %u. \n", min_j, max_j);
 
         double bx = ox + res / 2,
                by = oy + res / 2;
@@ -335,7 +342,7 @@ namespace social_navigation_layers
         dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
         dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
         // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-        ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
+        // ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
         for(int i=start_x;i<end_x;i++){
           for(int j=start_y;j<end_y;j++){
             unsigned char old_cost = costmap->getCost(i+dx, j+dy);
