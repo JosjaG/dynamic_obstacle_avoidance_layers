@@ -50,6 +50,7 @@ void filterBoats() {
                 boat.id = "boat_" + std::to_string(rand() % 100000);
             else
                 boat.id = matchBoats(boat);
+            ROS_INFO("Boat id before sending %s. \n", boat.id.c_str());
 
             // check if the three points form a rectangle or a line:
             double AB[2];
@@ -114,6 +115,7 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
         in_object = true;
     }
     double closest_entity = scan->range_max;
+    int min_point_lidar; 
     for (int i=1; i < scan->ranges.size(); ++i) {
         if (in_object) {
             if (scan->ranges[i] < closest_entity) {
@@ -135,11 +137,15 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                     temp_obstacle.max_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
                 }
                 temp_obstacle.lidar_loc = (temp_obstacle.lidar_loc + i) / 2;
-                if ((-scan->range_max < temp_obstacle.min_point.x && -scan->range_max < temp_obstacle.closest_point.x && -scan->range_max < temp_obstacle.max_point.x) &&
-                 (temp_obstacle.min_point.x < scan->range_max && temp_obstacle.closest_point.x < scan->range_max && temp_obstacle.max_point.x < scan->range_max))
+                bool obstacle_big_enough = ((scan->ranges[i]*((i - min_point_lidar)*scan->angle_increment)) > min_obstacle_size);
+                if (((-scan->range_max < temp_obstacle.min_point.x && -scan->range_max < temp_obstacle.closest_point.x && -scan->range_max < temp_obstacle.max_point.x) &&
+                 (temp_obstacle.min_point.x < scan->range_max && temp_obstacle.closest_point.x < scan->range_max && temp_obstacle.max_point.x < scan->range_max)) && obstacle_big_enough)
                     obstacle_list.push_back(temp_obstacle);
                 in_object = false;
-                ROS_INFO("lidar_loc is %i. \n", temp_obstacle.lidar_loc);
+                ROS_INFO("Obstacle size is %f. \n", (scan->ranges[i]*((i - min_point_lidar)*scan->angle_increment)));
+                ROS_INFO("Obstacle big enough is %d. \n", obstacle_big_enough);
+                ROS_INFO("min_obstacle_size is %f. \n", min_obstacle_size);
+
                 temp_obstacle = {};
                 closest_entity = scan->range_max;
             }
@@ -152,6 +158,7 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                 temp_obstacle.min_point.y = transform_d.getOrigin().y() - sin(yaw + (i - num_scans/2)*scan->angle_increment) * scan->ranges[i];                
             }
             temp_obstacle.lidar_loc = i;
+            min_point_lidar = i;
             in_object = true;
         }
     }
@@ -180,8 +187,8 @@ int main(int argc, char** argv)
     ros::param::get("/dory/boats_from_lidar/near_range", near_range);
   else
     near_range = 5;
-  if(ros::param::get("/dory/boats_from_lidar/near_range", min_obstacle_size))
-    ros::param::get("/dory/boats_from_lidar/near_range", min_obstacle_size);
+  if(ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size))
+    ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size);
   else
     min_obstacle_size = 0.1;
   // instantiate publishers & subscribers
