@@ -59,16 +59,19 @@ void filterBoats() {
             BC[0] = obstacle.closest_point.x - obstacle.min_point.x;
             BC[1] = obstacle.closest_point.y - obstacle.min_point.y;
             double area = AB[0]*BC[1] - AB[1]*BC[0];
-            if (fabs(area) < 2.0)
+            ROS_INFO("area is %f. \n", area);
+            double length = sqrt(pow((obstacle.min_point.x - obstacle.max_point.x), 2) + pow((obstacle.min_point.y - obstacle.max_point.y), 2));
+            if (fabs(area) < (2.0*length))
                 is_line = true;
 
             if (is_line) {
                 angle = atan2(AB[1], AB[0]);
-                double length = sqrt(pow((obstacle.min_point.x - obstacle.max_point.x), 2) + pow((obstacle.min_point.y - obstacle.max_point.y), 2));
                 if ((angle > -(M_PI/4.0) && angle < (M_PI/4.0)) || (angle > (3.0*M_PI/4.0) && angle < (-3.0*M_PI/4.0))) {
                     boat.size.x = length;
+                    boat.size.y = (fabs(area)*2.0/length);
                 } else {
                     boat.size.y = length;
+                    boat.size.x = (fabs(area)*2.0/length);
                     angle+=(M_PI/2.0);
                 }
             } else {
