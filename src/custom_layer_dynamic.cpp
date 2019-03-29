@@ -76,9 +76,11 @@ namespace social_navigation_layers
     };
 
     void CustomLayerDynamic::predictedBoat() {   // should, for each boat, remap it to the expected location
+      // double time_start = ros::Time::now().toSec();
       // ROS_INFO("received_path_ is %d. \n", received_path_);
       double dist_boat_x, dist_boat_y, dist_boat, time_boat;
       tf::StampedTransform transform_d;
+
       std::string global_frame = layered_costmap_->getGlobalFrameID();
       if (received_path_) {
         // for each point in the path, calculate the time dory needs to get there, then determine if the boat is in a specified radius of that point
@@ -205,6 +207,7 @@ namespace social_navigation_layers
         }
       }
       // ROS_INFO("Number of boats in the moved_boats list: %i. \n", moved_boats_.size());
+      // ROS_INFO("Time  CustomLayerDynamic::predictedBoat() = %f. \n", (ros::Time::now().toSec() - time_start));
     }
 
     void CustomLayerDynamic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
@@ -216,19 +219,21 @@ namespace social_navigation_layers
         for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
             social_navigation_layers::Boat boat = *p_it;
 
-            double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
-            double factor = 1.0 + mag * factor_;
-            double point = 0.5*std::max(boat.size.x, boat.size.y)*boat_get_radius(cutoff_, amplitude_, covar_ * factor );
+            // double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
+            // double factor = 1.0 + mag * factor_;
+            // double point = 0.5*std::max(boat.size.x, boat.size.y)*boat_get_radius(cutoff_, amplitude_, covar_ * factor );
+            // double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
-            *min_x = std::min(*min_x, boat.pose.position.x - point);
-            *min_y = std::min(*min_y, boat.pose.position.y - point);
-            *max_x = std::max(*max_x, boat.pose.position.x + point);
-            *max_y = std::max(*max_y, boat.pose.position.y + point);
+            *min_x = std::min(*min_x, boat.pose.position.x - boat.size.x);
+            *min_y = std::min(*min_y, boat.pose.position.y - boat.size.y);
+            *max_x = std::max(*max_x, boat.pose.position.x + boat.size.x);
+            *max_y = std::max(*max_y, boat.pose.position.y + boat.size.y);
 
         }
     }
 
     void CustomLayerDynamic::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
+      double time_start = ros::Time::now().toSec();
       boost::recursive_mutex::scoped_lock lock(lock_);
       if(!enabled_) return;
 
@@ -244,10 +249,10 @@ namespace social_navigation_layers
       for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
         social_navigation_layers::Boat boat = *p_it;
         double angle = atan2(boat.velocity.y, boat.velocity.x);
-        double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
-        double factor = 1.0 + mag * factor_;
+        // double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
+        double factor = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2)) * factor_;
         double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
-        double speed_factor = boat_size + sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
+        // double speed_factor = boat_size + sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
         double base = boat_get_radius(cutoff_, amplitude_, covar_) + boat_size;
         double point = boat_get_radius(cutoff_, amplitude_, covar_ * factor) + boat_size;
 
@@ -367,9 +372,9 @@ namespace social_navigation_layers
               // ROS_INFO("dot_ABAP = %f, dot_BCBP = %f. \n", dot_ABAP, dot_BCBP);
               a = costmap_2d::LETHAL_OBSTACLE;
             } else if(fabs(diff)<M_PI/2)
-              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor*speed_factor,covar_*speed_factor,angle);
+              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor*boat_size,covar_*boat_size,angle);
             else
-              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*speed_factor,covar_*speed_factor,0);
+              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*boat_size,covar_*boat_size,0);
 
             if(a < cutoff_)
               continue;
@@ -378,6 +383,7 @@ namespace social_navigation_layers
           }
         }
       }
+      ROS_INFO("Time  CustomLayerDynamic::updateCosts = %f. \n", (ros::Time::now().toSec() - time_start));
     }
 
     void CustomLayerDynamic::configure(CustomLayerDynamicConfig &config, uint32_t level) {

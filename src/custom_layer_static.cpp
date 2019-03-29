@@ -41,20 +41,23 @@ namespace social_navigation_layers
   void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
     boats_list_.boats.clear();
     // ROS_INFO("Checking if any obstacle can be removed. \n");
-    CustomLayerStatic::removeOldObstacles();
+    if (static_obstacles_.size() > 0)
+      CustomLayerStatic::removeOldObstacles();
   }
 
   void CustomLayerStatic::removeOldObstacles() {
+    double time_start = ros::Time::now().toSec();
     double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
     laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.5));
-    if(laser_msg != NULL){
-      laser_data = *laser_msg;
-    }
-    if (laser_data.ranges.size() > 0) {
+    // if(laser_msg != NULL){
+    //   laser_data = *laser_msg; 
+    // }
+    ROS_INFO("Time after getting laser data = %f. \n", (ros::Time::now().toSec() - time_start));
+    if (laser_msg->ranges.size() > 0) {
       tf::StampedTransform transform_d;
       std::vector<static_obstacle_> static_obstacles_keep;
-      int buffer = laser_data.ranges.size()/100;
+      int buffer = laser_msg->ranges.size()/100;
       std::vector<static_obstacle_>::iterator o_it;
       for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
         struct static_obstacle_ obstacle = *o_it;
@@ -66,13 +69,14 @@ namespace social_navigation_layers
         }
         double transform_length = sqrt(pow(transform_d.getOrigin().x(), 2.0) + pow(transform_d.getOrigin().y(), 2.0));
         int lidar_index = obstacle.boat.lidar_index;
-        buffer = buffer + laser_data.range_max/laser_data.ranges[lidar_index];
+        buffer = buffer + laser_msg->range_max/laser_msg->ranges[lidar_index];
         for (int i=(lidar_index - buffer); i < (lidar_index + buffer); ++i) {
-          if (fabs(laser_data.ranges[i] - (transform_length - std::min(obstacle.boat.size.x, obstacle.boat.size.y))) < tolerance) {
+          if (fabs(laser_msg->ranges[i] - (transform_length - std::min(obstacle.boat.size.x, obstacle.boat.size.y))) < tolerance) {
             static_obstacles_keep.push_back(obstacle);
             break;
           }
         }
+      ROS_INFO("Time after lidar loop = %f. \n", (ros::Time::now().toSec() - time_start));
       }
       static_obstacles_.clear();
       std::vector<static_obstacle_>::iterator s_it;
@@ -81,9 +85,11 @@ namespace social_navigation_layers
         static_obstacles_.push_back(obstacle);
       }
     }
+    ROS_INFO("Time  CustomLayerStatic::removeOldObstacles() end = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
   void CustomLayerStatic::filterStatic() {
+    // double time_start = ros::Time::now().toSec();
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
       social_navigation_layers::Boat& boat = boats_list_.boats[i];
       double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
@@ -131,6 +137,7 @@ namespace social_navigation_layers
       static_obstacles_.pop_back();
       count--;
     }
+    // ROS_INFO("Time  CustomLayerStatic::filterStatic() = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
   void CustomLayerStatic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) {
@@ -148,6 +155,7 @@ namespace social_navigation_layers
   }
 
   void CustomLayerStatic::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
+    double time_start = ros::Time::now().toSec();
     boost::recursive_mutex::scoped_lock lock(lock_);
     if(!enabled_) return;
     std::list<social_navigation_layers::Boat>::iterator p_it;
@@ -270,6 +278,7 @@ namespace social_navigation_layers
         }
       }
     }
+    ROS_INFO("Time  CustomLayerStatic::updateCosts() = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
   void CustomLayerStatic::configure(CustomLayerStaticConfig &config, uint32_t level) {
