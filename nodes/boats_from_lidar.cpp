@@ -180,26 +180,26 @@ int main(int argc, char** argv)
   // Initialize ROS
   ros::init(argc, argv, "lidar_to_boats");
   ros::NodeHandle node;
-  if(ros::param::get("/clara/boats_from_lidar/min_size", min_size))
-    ros::param::get("/clara/boats_from_lidar/min_size", min_size);
+  if(ros::param::get("/dory/boats_from_lidar/min_size", min_size))
+    ros::param::get("/dory/boats_from_lidar/min_size", min_size);
   else
     min_size = 0.3;
-  if(ros::param::get("/clara/boats_from_lidar/max_jump", max_jump))
-    ros::param::get("/clara/boats_from_lidar/max_jump", max_jump);
+  if(ros::param::get("/dory/boats_from_lidar/max_jump", max_jump))
+    ros::param::get("/dory/boats_from_lidar/max_jump", max_jump);
   else
     max_jump = 0.32;
-  if(ros::param::get("/clara/boats_from_lidar/near_range", near_range))
-    ros::param::get("/clara/boats_from_lidar/near_range", near_range);
+  if(ros::param::get("/dory/boats_from_lidar/near_range", near_range))
+    ros::param::get("/dory/boats_from_lidar/near_range", near_range);
   else
     near_range = 7;
-  if(ros::param::get("/clara/boats_from_lidar/min_obstacle_size", min_obstacle_size))
-    ros::param::get("/clara/boats_from_lidar/min_obstacle_size", min_obstacle_size);
+  if(ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size))
+    ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size);
   else
     min_obstacle_size = 0.15;
   // instantiate publishers & subscribers
   boats_pub_ = node.advertise<social_navigation_layers::Boats>("boats_detected", 1);
-  laser_sub_ = node.subscribe("clara/scan", 1, lidarCallback);
-  map_sub_ = node.subscribe("clara/map", 1, mapCallback);
+  laser_sub_ = node.subscribe("scan", 1, lidarCallback);
+  map_sub_ = node.subscribe("map", 1, mapCallback);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
