@@ -36,7 +36,11 @@ void filterBoats() {
         int a = (int) ((obstacle.min_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.min_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
         int b = (int) ((obstacle.closest_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.closest_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
         int c = (int) ((obstacle.max_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.max_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
-        if (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100) {
+	bool not_static_obstacle = (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100);
+        bool not_unknown_space = (map_.data[a] != -1 || map_.data[b] != -1 || map_.data[c] != -1);
+        if (not_static_obstacle && not_unknown_space) { // || map_.data[a] == -1 || map_.data[b] == -1 || map_.data[c] == -1) {
+          // break;
+        // } else {
             social_navigation_layers::Boat boat;
 
             if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
@@ -50,7 +54,7 @@ void filterBoats() {
                 boat.id = "boat_" + std::to_string(rand() % 100000);
             else
                 boat.id = matchBoats(boat);
-            ROS_INFO("Boat id before sending %s. \n", boat.id.c_str());
+            // ROS_INFO("Boat id before sending %s. \n", boat.id.c_str());
 
             // check if the three points form a rectangle or a line:
             double AB[2];
@@ -94,6 +98,7 @@ void filterBoats() {
     boats_list_.boats = detected_boats_;
     prev_boats_ = detected_boats_;
     boats_list_.header.frame_id = "map";
+    boats_list_.header.stamp = ros::Time::now();
     boats_pub_.publish(boats_list_);
 }
 
@@ -175,26 +180,26 @@ int main(int argc, char** argv)
   // Initialize ROS
   ros::init(argc, argv, "lidar_to_boats");
   ros::NodeHandle node;
-  if(ros::param::get("/dory/boats_from_lidar/min_size", min_size))
-    ros::param::get("/dory/boats_from_lidar/min_size", min_size);
+  if(ros::param::get("/clara/boats_from_lidar/min_size", min_size))
+    ros::param::get("/clara/boats_from_lidar/min_size", min_size);
   else
-    min_size = 0.5;
-  if(ros::param::get("/dory/boats_from_lidar/max_jump", max_jump))
-    ros::param::get("/dory/boats_from_lidar/max_jump", max_jump);
+    min_size = 0.3;
+  if(ros::param::get("/clara/boats_from_lidar/max_jump", max_jump))
+    ros::param::get("/clara/boats_from_lidar/max_jump", max_jump);
   else
-    max_jump = 1.0;
-  if(ros::param::get("/dory/boats_from_lidar/near_range", near_range))
-    ros::param::get("/dory/boats_from_lidar/near_range", near_range);
+    max_jump = 0.32;
+  if(ros::param::get("/clara/boats_from_lidar/near_range", near_range))
+    ros::param::get("/clara/boats_from_lidar/near_range", near_range);
   else
-    near_range = 5;
-  if(ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size))
-    ros::param::get("/dory/boats_from_lidar/min_obstacle_size", min_obstacle_size);
+    near_range = 7;
+  if(ros::param::get("/clara/boats_from_lidar/min_obstacle_size", min_obstacle_size))
+    ros::param::get("/clara/boats_from_lidar/min_obstacle_size", min_obstacle_size);
   else
-    min_obstacle_size = 0.1;
+    min_obstacle_size = 0.15;
   // instantiate publishers & subscribers
   boats_pub_ = node.advertise<social_navigation_layers::Boats>("boats_detected", 1);
-  laser_sub_ = node.subscribe("scan", 1, lidarCallback);
-  map_sub_ = node.subscribe("map", 1, mapCallback);
+  laser_sub_ = node.subscribe("clara/scan", 1, lidarCallback);
+  map_sub_ = node.subscribe("clara/map", 1, mapCallback);
 
   listener_ = new (tf::TransformListener);
   broadcaster_ = new (tf::TransformBroadcaster);
