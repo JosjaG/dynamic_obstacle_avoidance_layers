@@ -11,6 +11,17 @@ using costmap_2d::NO_INFORMATION;
 using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::FREE_SPACE;
 
+double static_gaussian(double x, double y, double x0, double y0, double varx, double vary, double skew){
+    double dx = x-x0, dy = y-y0;
+    double h = sqrt(dx*dx+dy*dy);
+    double angle = atan2(dy,dx);
+    double mx = cos(angle-skew) * h;
+    double my = sin(angle-skew) * h;
+    double f1 = pow(mx, 2.0)/(2.0 * varx),
+           f2 = pow(my, 2.0)/(2.0 * vary);
+    return 255.0 * exp(-(f1 + f2));
+}
+
 namespace social_navigation_layers
 {
   int CustomLayerStatic::search(social_navigation_layers::Boat& boat_in){
@@ -39,13 +50,14 @@ namespace social_navigation_layers
   }
 
   void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
-    boats_list_.boats.clear();
-    // ROS_INFO("Checking if any obstacle can be removed. \n");
-    if (static_obstacles_.size() > 0)
-      CustomLayerStatic::removeOldObstacles();
+    // boats_list_.boats.clear();
+    // // ROS_INFO("Checking if any obstacle can be removed. \n");
+    // if (static_obstacles_.size() > 0)
+    //   CustomLayerStatic::removeOldObstacles();
+    timer = true;
   }
 
-  void CustomLayerStatic::removeOldObstacles() {
+  int CustomLayerStatic::removeOldObstacles() {
     double time_start = ros::Time::now().toSec();
     double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
@@ -70,7 +82,17 @@ namespace social_navigation_layers
         double transform_length = sqrt(pow(transform_d.getOrigin().x(), 2.0) + pow(transform_d.getOrigin().y(), 2.0));
         int lidar_index = obstacle.boat.lidar_index;
         buffer = buffer + laser_msg->range_max/laser_msg->ranges[lidar_index];
-        for (int i=(lidar_index - buffer); i < (lidar_index + buffer); ++i) {
+        int start = lidar_index - buffer;
+        if (start < 0) {
+          for (int i=(laser_msg->ranges.size() + start); i < (laser_msg->ranges.size()); ++i) {
+            if (fabs(laser_msg->ranges[i] - (transform_length - std::min(obstacle.boat.size.x, obstacle.boat.size.y))) < tolerance) {
+              static_obstacles_keep.push_back(obstacle);
+              break;
+            }
+          }
+          int start = 0;
+        } 
+        for (int i=start; i < (lidar_index + buffer); ++i) {
           if (fabs(laser_msg->ranges[i] - (transform_length - std::min(obstacle.boat.size.x, obstacle.boat.size.y))) < tolerance) {
             static_obstacles_keep.push_back(obstacle);
             break;
@@ -84,12 +106,18 @@ namespace social_navigation_layers
         struct static_obstacle_ obstacle = *s_it;
         static_obstacles_.push_back(obstacle);
       }
+      return 1;
     }
     ROS_INFO("Time  CustomLayerStatic::removeOldObstacles() end = %f. \n", (ros::Time::now().toSec() - time_start));
+    // CustomLayerStatic::resetMap();
+    return 0;
   }
 
   void CustomLayerStatic::filterStatic() {
     // double time_start = ros::Time::now().toSec();
+    // if (timer && (static_obstacles_.size() > 0))
+      // int temp = CustomLayerStatic::removeOldObstacles();
+
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
       social_navigation_layers::Boat& boat = boats_list_.boats[i];
       double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
@@ -110,17 +138,12 @@ namespace social_navigation_layers
     for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
       struct static_obstacle_ obstacle = *o_it;
       social_navigation_layers::Boat tpt;
-      geometry_msgs::PoseStamped pt, opt;
-      std::string global_frame = layered_costmap_->getGlobalFrameID();
+      // geometry_msgs::PoseStamped pt, opt;
+      // std::string global_frame = layered_costmap_->getGlobalFrameID();
       if (ros::Time::now().toSec()-obstacle.received.toSec()<static_keep_time_.toSec()) {  
         try{
-          pt.pose = obstacle.boat.pose;
-          pt.header.frame_id = boats_list_.header.frame_id;
-          tf_.transformPose(global_frame, pt, opt);
-          tpt.pose = opt.pose;
-          tpt.size = obstacle.boat.size;
-          tf_.transformPose(global_frame, pt, opt);
-          
+          tpt.pose = obstacle.boat.pose;
+          tpt.size = obstacle.boat.size;          
           static_boats_.push_back(tpt);
         }
         catch(tf::LookupException& ex) {
@@ -137,6 +160,10 @@ namespace social_navigation_layers
       static_obstacles_.pop_back();
       count--;
     }
+    if (timer) {
+      boats_list_.boats.clear();
+      timer = false;
+    }
     // ROS_INFO("Time  CustomLayerStatic::filterStatic() = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
@@ -146,11 +173,12 @@ namespace social_navigation_layers
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       social_navigation_layers::Boat boat = *p_it;
+      double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
-      *min_x = std::min(*min_x, boat.pose.position.x - 3 * boat.size.x);
-      *min_y = std::min(*min_y, boat.pose.position.y - 3 * boat.size.y);
-      *max_x = std::max(*max_x, boat.pose.position.x + 3 * boat.size.x);
-      *max_y = std::max(*max_y, boat.pose.position.y + 3 * boat.size.y);
+      *min_x = std::min(*min_x, boat.pose.position.x - 0.75 * boat_size);
+      *min_y = std::min(*min_y, boat.pose.position.y - 0.75 * boat_size);
+      *max_x = std::max(*max_x, boat.pose.position.x + 0.75 * boat_size);
+      *max_y = std::max(*max_y, boat.pose.position.y + 0.75 * boat_size);
     }
   }
 
@@ -168,7 +196,6 @@ namespace social_navigation_layers
 
       double cx = boat.pose.position.x;
       double cy = boat.pose.position.y;
-      // ROS_INFO("X position boat = %f. \n", cx);
 
       double roll, pitch, yaw;
       geometry_msgs::Quaternion q = boat.pose.orientation;
@@ -178,20 +205,22 @@ namespace social_navigation_layers
       double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
       double ox, oy;
-      if(sin(yaw)>0.0)
+      // if(sin(yaw)>0.0) {
           oy = cy - boat_size;
-      else
-          oy = cy + (boat_size) * sin(yaw) - boat_size;
+          // ROS_INFO("sin(yaw)>0.0. \n"); 
+      // } else
+          // oy = cy + (boat_size) * sin(yaw) - boat_size;
 
-      if(cos(yaw)>=0.0)
+      // if(cos(yaw)>=0.0) {
           ox = cx - boat_size;
-      else
-          ox = cx + (boat_size) * cos(yaw) - boat_size;
+          // ROS_INFO("cos(yaw)>=0.0. \n"); 
+      // } else
+          // ox = cx + (boat_size) * cos(yaw) - boat_size;
 
       int dx, dy;
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
 
-      int start_x = 0, start_y=0, end_x=(3 * boat_size) / res, end_y = (3 * boat_size) / res;
+      int start_x = 0, start_y=0, end_x=int( (3.0 * boat_size) / res), end_y = int( (3.0 * boat_size) / res);
 
       if(dx < 0)
         start_x = -dx;
@@ -212,6 +241,8 @@ namespace social_navigation_layers
         start_y = min_j - dy;
       if((int)(end_y+dy) > max_j)
         end_y = max_j - dy;
+
+      ROS_INFO("ID = %s, Start x = %d, end_x = %d, start_y = %d, end_y = %d. \n", boat.id.c_str(), start_x, end_x, start_y, end_y); 
 
       double bx = ox + res / 2, by = oy + res / 2;
 
@@ -248,11 +279,14 @@ namespace social_navigation_layers
       double dot_AB, dot_BC;
       dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
       dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
+
+      // costmap->resetMap(); 
+
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
-          unsigned char old_cost = costmap->getCost(i+dx, j+dy);
-          if(old_cost == costmap_2d::NO_INFORMATION)
-            continue;
+          // unsigned char old_cost = costmap->getCost(i+dx, j+dy);
+          // if(old_cost == costmap_2d::NO_INFORMATION)
+            // continue;
 
           double x = bx+i*res, y = by+j*res;
           double a;
@@ -267,14 +301,13 @@ namespace social_navigation_layers
           dot_BCBP = BC[0]*BP[0] + BC[1]*BP[1];
 
           if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC))) {
-            // ROS_INFO("dot_ABAP = %f, dot_BCBP = %f. \n", dot_ABAP, dot_BCBP);
             a = costmap_2d::LETHAL_OBSTACLE;
           } else {
-            a = costmap_2d::FREE_SPACE;
+            a = costmap_2d::FREE_SPACE; //static_gaussian(x,y,cx,cy,boat.size.x,boat.size.y,yaw);
           }
 
           unsigned char cvalue = (unsigned char) a;
-          costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
+          costmap->setCost(i+dx, j+dy, cvalue); // std::max(cvalue, old_cost));
         }
       }
     }
