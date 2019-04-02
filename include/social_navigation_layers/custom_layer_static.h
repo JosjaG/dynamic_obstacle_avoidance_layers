@@ -24,7 +24,7 @@ namespace social_navigation_layers
     protected:
       void configure(CustomLayerStaticConfig &config, uint32_t level);
       void timerCallback(const ros::TimerEvent&);
-      void removeOldObstacles();
+      int removeOldObstacles();
       void filterStatic();
       int search(social_navigation_layers::Boat& boat_in);
       double width_, height_;
@@ -36,6 +36,7 @@ namespace social_navigation_layers
       };
       std::vector<static_obstacle_> static_obstacles_;
       ros::Duration static_keep_time_;
+      bool timer;
       ros::Timer timer_;
       dynamic_reconfigure::Server<CustomLayerStaticConfig>* server_;
       dynamic_reconfigure::Server<CustomLayerStaticConfig>::CallbackType f_;
