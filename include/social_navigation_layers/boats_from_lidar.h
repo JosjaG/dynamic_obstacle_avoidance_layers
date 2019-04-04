@@ -14,7 +14,7 @@ void filterBoats();
 void publishBoats();
 const char * matchBoats(int lidar);
 void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
-void mapCallback(const nav_msgs::OccupancyGrid& map);
+//void mapCallback(const nav_msgs::OccupancyGrid& map);
 
 tf::TransformListener* listener_;
 tf::TransformBroadcaster* broadcaster_;
@@ -33,7 +33,8 @@ struct obstacle {
 double max_jump, min_size, min_obstacle_size;
 int near_range;
 social_navigation_layers::Boats boats_list_;
-nav_msgs::OccupancyGrid map_;
+//nav_msgs::OccupancyGrid& map_;
+boost::shared_ptr<nav_msgs::OccupancyGrid const> map_;
 std::vector<social_navigation_layers::Boat> detected_boats_;
 std::vector<social_navigation_layers::Boat> prev_boats_;
 std::vector<obstacle> obstacle_list;

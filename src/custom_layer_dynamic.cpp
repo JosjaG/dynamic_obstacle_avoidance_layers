@@ -296,7 +296,7 @@ namespace social_navigation_layers
         if((int)(end_y+dy) > max_j)
             end_y = max_j - dy;
         // ROS_INFO("min j = %u, max j = %u. \n", min_j, max_j);
-      ROS_INFO("ID = %s, Start x = %d, end_x = %d, start_y = %d, end_y = %d. \n", boat.id.c_str(), start_x, end_x, start_y, end_y); 
+        ROS_INFO("ID = %s, Start x = %d, end_x = %d, start_y = %d, end_y = %d. \n", boat.id.c_str(), start_x, end_x, start_y, end_y); 
 
         double bx = ox + res / 2,
                by = oy + res / 2;
@@ -373,7 +373,7 @@ namespace social_navigation_layers
             if(a < cutoff_)
               continue;
             unsigned char cvalue = (unsigned char) a;
-            costmap->setCost(i+dx, j+dy, cvalue); // std::max(cvalue, old_cost));
+            costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
           }
         }
       }

@@ -284,9 +284,9 @@ namespace social_navigation_layers
 
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
-          // unsigned char old_cost = costmap->getCost(i+dx, j+dy);
-          // if(old_cost == costmap_2d::NO_INFORMATION)
-            // continue;
+           unsigned char old_cost = costmap->getCost(i+dx, j+dy);
+           if(old_cost == costmap_2d::NO_INFORMATION)
+             continue;
 
           double x = bx+i*res, y = by+j*res;
           double a;
@@ -307,7 +307,7 @@ namespace social_navigation_layers
           }
 
           unsigned char cvalue = (unsigned char) a;
-          costmap->setCost(i+dx, j+dy, cvalue); // std::max(cvalue, old_cost));
+          costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
         }
       }
     }
