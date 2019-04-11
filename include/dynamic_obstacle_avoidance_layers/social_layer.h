@@ -3,12 +3,11 @@
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
-// #include <people_msgs/People.h>
-#include <social_navigation_layers/Boats.h>
-#include <social_navigation_layers/Boat.h>
+#include <dynamic_obstacle_avoidance_layers/Boats.h>
+#include <dynamic_obstacle_avoidance_layers/Boat.h>
 #include <boost/thread.hpp>
 
-namespace social_navigation_layers
+namespace dynamic_obstacle_avoidance_layers
 {
   class SocialLayer : public costmap_2d::Layer
   {
@@ -18,18 +17,15 @@ namespace social_navigation_layers
       virtual void onInitialize();
       virtual void updateBounds(double origin_x, double origin_y, double origin_yaw, double* min_x, double* min_y, double* max_x, double* max_y);
       virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
-      
-      // virtual void updateBoundsFromPeople(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
       virtual void updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
-      // virtual void filterStatic(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
 
-      bool isDiscretized() { return false; }
+      // bool isDiscretized() { return false; }
 
     protected:
-      void boatsCallback(const social_navigation_layers::Boats& boats);
+      void boatsCallback(const dynamic_obstacle_avoidance_layers::Boats& boats);
       ros::Subscriber boats_sub_;
-      social_navigation_layers::Boats boats_list_;
-      std::list<social_navigation_layers::Boat> transformed_boats_;
+      dynamic_obstacle_avoidance_layers::Boats boats_list_;
+      std::list<dynamic_obstacle_avoidance_layers::Boat> transformed_boats_;
       ros::Duration boats_keep_time_;
       boost::recursive_mutex lock_;
       tf::TransformListener tf_;
@@ -37,7 +33,4 @@ namespace social_navigation_layers
       double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
   };
 };
-
-
 #endif
-

@@ -7,8 +7,8 @@
 #include <geometry_msgs/Point.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-#include <social_navigation_layers/Boats.h>
-#include <social_navigation_layers/Boat.h>
+#include <dynamic_obstacle_avoidance_layers/Boats.h>
+#include <dynamic_obstacle_avoidance_layers/Boat.h>
 
 void filterBoats();
 void publishBoats();
@@ -32,10 +32,10 @@ struct obstacle {
 
 double max_jump, min_size, min_obstacle_size;
 int near_range;
-social_navigation_layers::Boats boats_list_;
+dynamic_obstacle_avoidance_layers::Boats boats_list_;
 nav_msgs::OccupancyGrid map_;
-std::vector<social_navigation_layers::Boat> detected_boats_;
-std::vector<social_navigation_layers::Boat> prev_boats_;
+std::vector<dynamic_obstacle_avoidance_layers::Boat> detected_boats_;
+std::vector<dynamic_obstacle_avoidance_layers::Boat> prev_boats_;
 std::vector<obstacle> obstacle_list;
 
 

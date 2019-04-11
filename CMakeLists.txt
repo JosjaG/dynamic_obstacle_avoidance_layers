@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(social_navigation_layers)
+project(dynamic_obstacle_avoidance_layers)
 
 find_package(catkin REQUIRED COMPONENTS
   angles
   costmap_2d
   dynamic_reconfigure
-  # people_msgs
   pluginlib
   roscpp
   geometry_msgs
@@ -25,15 +24,14 @@ generate_messages(
 )
 
 generate_dynamic_reconfigure_options(
-  # cfg/ProxemicLayer.cfg
   cfg/CustomLayerDynamic.cfg
   cfg/CustomLayerStatic.cfg
 )
 
 catkin_package(
-    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure pluginlib roscpp kalman_filter # people_msgs
+    CATKIN_DEPENDS angles costmap_2d dynamic_reconfigure pluginlib roscpp kalman_filter
     INCLUDE_DIRS include
-    LIBRARIES social_layers
+    LIBRARIES obstacle_layers
 )
 
 include_directories(
@@ -42,19 +40,16 @@ include_directories(
 
 add_compile_options(-std=c++11)
 ## add cpp library
-add_library(social_layers 
+add_library(obstacle_layers
             src/social_layer.cpp
-            # src/proxemic_layer.cpp 
-            # src/passing_layer.cpp
             src/custom_layer_dynamic.cpp
             src/custom_layer_static.cpp
-            # nodes/boats_from_lidar.cpp
 )
 
 add_executable(boats_from_lidar nodes/boats_from_lidar.cpp)
 
 add_dependencies(
-    social_layers ${${PROJECT_NAME}_EXPORTED_TARGETS}
+    obstacle_layers ${${PROJECT_NAME}_EXPORTED_TARGETS}
     boats_from_lidar ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS}
 )
 
@@ -66,14 +61,14 @@ install(TARGETS
 )
 
 target_link_libraries(
-    social_layers ${catkin_LIBRARIES}
+    obstacle_layers ${catkin_LIBRARIES}
 )
 
 install(FILES costmap_plugins.xml
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-install(TARGETS social_layers
+install(TARGETS obstacle_layers
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}

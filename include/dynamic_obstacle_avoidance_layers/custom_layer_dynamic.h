@@ -1,19 +1,19 @@
 #ifndef CUSTOM_LAYER_DYNAMIC_H_
 #define CUSTOM_LAYER_DYNAMIC_H_
 #include <ros/ros.h>
-#include <social_navigation_layers/social_layer.h>
+#include <dynamic_obstacle_avoidance_layers/social_layer.h>
 #include <dynamic_reconfigure/server.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <actionlib_msgs/GoalStatusArray.h>
-#include <social_navigation_layers/Boats.h>
-#include <social_navigation_layers/Boat.h>
-#include <social_navigation_layers/CustomLayerDynamicConfig.h>
+#include <dynamic_obstacle_avoidance_layers/Boats.h>
+#include <dynamic_obstacle_avoidance_layers/Boat.h>
+#include <dynamic_obstacle_avoidance_layers/CustomLayerDynamicConfig.h>
 
 double boat_gaussian(double x, double y, double x0, double y0, double A, double varx, double vary, double skew);
 double boat_get_radius(double cutoff, double A, double var);
 
-namespace social_navigation_layers
+namespace dynamic_obstacle_avoidance_layers
 {
   class CustomLayerDynamic : public SocialLayer
   {
@@ -26,7 +26,7 @@ namespace social_navigation_layers
 
     protected:
       void configure(CustomLayerDynamicConfig &config, uint32_t level);
-      void interpVelCallback(const dynamic_reconfigure::Config& vel); 
+      void interpVelCallback(const dynamic_reconfigure::Config& vel);
       void predictedBoatPath(const nav_msgs::Path& path);
       void goalReached(const actionlib_msgs::GoalStatusArray& status);
       void predictedBoat();
@@ -40,7 +40,7 @@ namespace social_navigation_layers
       dynamic_reconfigure::Server<CustomLayerDynamicConfig>::CallbackType f_;
       ros::Subscriber interp_vel_sub_, path_sub_, status_sub_, goal_sub_;
       tf::TransformListener listener_;
-      std::list<social_navigation_layers::Boat> moved_boats_;
+      std::list<dynamic_obstacle_avoidance_layers::Boat> moved_boats_;
   };
 };
 #endif

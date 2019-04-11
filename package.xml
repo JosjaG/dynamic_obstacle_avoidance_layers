@@ -1,14 +1,13 @@
 <package format="2">
-  <name>social_navigation_layers</name>
+  <name>dynamic_obstacle_avoidance_layers</name>
   <version>0.3.2</version>
   <description>
   Plugin-based layers for the navigation stack that 
-  implement various social navigation contraints, like proxemic distance. 
+  implement various obstacle detection and prediction methods
   </description>
-  <author email="davidvlu@gmail.com">David V. Lu!!</author>
-  <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
+  <author email="j.geijsberts@student.tue.nl">Josja Geijsberts</author>
+  <maintainer email="j.geijsberts@student.tue.nl">Josja Geijsberts</maintainer>
   <license>BSD</license>
-  <url>http://ros.org/wiki/social_navigation_layers</url>
 
   <buildtool_depend>catkin</buildtool_depend>
   <depend>angles</depend>
