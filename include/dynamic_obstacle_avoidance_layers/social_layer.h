@@ -19,13 +19,10 @@ namespace dynamic_obstacle_avoidance_layers
       virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
       virtual void updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) = 0;
 
-      // bool isDiscretized() { return false; }
-
     protected:
       void boatsCallback(const dynamic_obstacle_avoidance_layers::Boats& boats);
       ros::Subscriber boats_sub_;
       dynamic_obstacle_avoidance_layers::Boats boats_list_;
-      std::list<dynamic_obstacle_avoidance_layers::Boat> transformed_boats_;
       ros::Duration boats_keep_time_;
       boost::recursive_mutex lock_;
       tf::TransformListener tf_;

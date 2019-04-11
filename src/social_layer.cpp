@@ -25,47 +25,7 @@ namespace dynamic_obstacle_avoidance_layers
 
     void SocialLayer::updateBounds(double origin_x, double origin_y, double origin_z, double* min_x, double* min_y, double* max_x, double* max_y){
         boost::recursive_mutex::scoped_lock lock(lock_);
-        
-        // std::string global_frame = layered_costmap_->getGlobalFrameID();
-        // transformed_boats_.clear();
-        
-        // for(unsigned int i=0; i<boats_list_.boats.size(); i++){
-        //     dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
-        //     dynamic_obstacle_avoidance_layers::Boat tpt;
-        //     geometry_msgs::PoseStamped pt, opt;
-            
-        //     try{
-        //       pt.pose.position.x = boat.pose.position.x;
-        //       pt.pose.position.y = boat.pose.position.y;
-        //       pt.pose.position.z = boat.pose.position.z;
-        //       pt.pose.orientation = boat.pose.orientation;
-        //       pt.header.frame_id = boats_list_.header.frame_id;
-        //       tf_.transformPose(global_frame, pt, opt);
-        //       tpt.pose = opt.pose;
 
-        //       pt.pose.position.x += boat.velocity.x;
-        //       pt.pose.position.y += boat.velocity.y;
-        //       pt.pose.position.z += boat.velocity.z;
-        //       tf_.transformPose(global_frame, pt, opt);
-              
-        //       tpt.pose.orientation = pt.pose.orientation;
-        //       tpt.velocity.x = opt.pose.position.x - tpt.pose.position.x;
-        //       tpt.velocity.y = opt.pose.position.y - tpt.pose.position.y;
-        //       tpt.velocity.z = opt.pose.position.z - tpt.pose.position.z;
-        //     }
-        //     catch(tf::LookupException& ex) {
-        //       ROS_ERROR("No Transform available Error: %s\n", ex.what());
-        //       continue;
-        //     }
-        //     catch(tf::ConnectivityException& ex) {
-        //       ROS_ERROR("Connectivity Error: %s\n", ex.what());
-        //       continue;
-        //     }
-        //     catch(tf::ExtrapolationException& ex) {
-        //       ROS_ERROR("Extrapolation Error: %s\n", ex.what());
-        //       continue;
-        //     }
-        // }
         updateBoundsFromBoats(min_x, min_y, max_x, max_y);
         if(first_time_){
             last_min_x_ = *min_x;
