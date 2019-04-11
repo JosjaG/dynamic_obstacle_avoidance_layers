@@ -57,7 +57,7 @@ namespace dynamic_obstacle_avoidance_layers
     double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
     laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.1));
-    if (laser_msg->ranges.size() > 0) {
+    if(laser_msg != NULL){
       tf::StampedTransform transform_d;
       std::vector<static_obstacle_> static_obstacles_keep;
       int buffer = laser_msg->ranges.size()/100;
@@ -102,8 +102,10 @@ namespace dynamic_obstacle_avoidance_layers
   }
 
   void CustomLayerStatic::filterStatic() {
-    if (timer && (static_obstacles_.size() > 0))
+    if (timer && (static_obstacles_.size() > 0)) {
       int temp = CustomLayerStatic::removeOldObstacles();
+      ROS_INFO("entered the if statement");
+    }
 
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
       dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
