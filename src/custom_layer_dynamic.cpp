@@ -4,8 +4,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-// #include <tf2/Matrix3x3.h>
-// #include <tf/transformations.h> //2_geometry_msgs/tf2_geometry_msgs.h>
+
 PLUGINLIB_EXPORT_CLASS(dynamic_obstacle_avoidance_layers::CustomLayerDynamic, costmap_2d::Layer)
 
 using costmap_2d::NO_INFORMATION;
@@ -75,9 +74,7 @@ namespace dynamic_obstacle_avoidance_layers
       double time;
     };
 
-    void CustomLayerDynamic::predictedBoat() {   // should, for each boat, remap it to the expected location
-      // double time_start = ros::Time::now().toSec();
-      // ROS_INFO("received_path_ is %d. \n", received_path_);
+    void CustomLayerDynamic::predictedBoat() { // should, for each boat, remap it to the expected location
       double dist_boat_x, dist_boat_y, dist_boat, time_boat;
       tf::StampedTransform transform_d;
 
@@ -115,10 +112,8 @@ namespace dynamic_obstacle_avoidance_layers
                 predicted_boat.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
                 predicted_boat.position.y = boat.pose.position.y + time_boat*boat.velocity.y;
                 temp_dist_boat = sqrt(pow(predicted_boat.position.x-current_path_.poses[i].pose.position.x, 2) + pow(predicted_boat.position.y-current_path_.poses[i].pose.position.y, 2));
-                // ROS_INFO("Distance from boat %d to path is %f, length of path is %d. \n", j, temp_dist_boat, current_path_.poses.size());
                 if (temp_dist_boat<max_d) {
                   temp_boats[j].time = time_boat;
-                  // ROS_INFO("Boat is close, distance to path is %f. \n", temp_dist_boat);
                   if (temp_boats[j].dist>0.0)
                     temp_boats[j].dist = std::min(temp_dist_boat, temp_boats[j].dist);
                   else
@@ -127,39 +122,28 @@ namespace dynamic_obstacle_avoidance_layers
               }
             }
         }
-        for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
+        for (unsigned int i=0; i<boats_list_.boats.size(); i++) {
           dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
           if (boat_vel>0.1) {
             dynamic_obstacle_avoidance_layers::Boat tpt;
-            geometry_msgs::PoseStamped pt, opt;
-              if (temp_boats[i].dist>0.0){          
-                try{
-                  pt.pose.position.x = boat.pose.position.x + temp_boats[i].time*boat.velocity.x;
-                  pt.pose.position.y = boat.pose.position.y + temp_boats[i].time*boat.velocity.y;
-                  pt.pose.position.z = boat.pose.position.z;
-                  pt.pose.orientation = boat.pose.orientation;
-                  pt.header.frame_id = boats_list_.header.frame_id;
-                  tf_.transformPose(global_frame, pt, opt);
-                  tpt.pose = opt.pose;
+            try{
+              tpt.pose.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
+              tpt.pose.position.y = boat.pose.position.y + time_boat*boat.velocity.y;
+              tpt.pose.position.z = boat.pose.position.z;
+              tpt.pose.orientation = boat.pose.orientation;
 
-                  tpt.velocity = boat.velocity;
-                  tpt.size = boat.size;
-                  tf_.transformPose(global_frame, pt, opt);
-                  
-                  moved_boats_.push_back(tpt);
-                }
-                catch(tf::LookupException& ex) {
-                  ROS_ERROR("No Transform available Error: %s\n", ex.what());
-                  continue;
-                }
-                // ROS_INFO("Distance to path within if is %f. \n", temp_boats[i].dist);  
-              }
+              tpt.velocity = boat.velocity;
+              tpt.size = boat.size;
+
+              moved_boats_.push_back(tpt);
+            }
+            catch(tf::LookupException& ex) {
+              ROS_ERROR("No Transform available Error: %s\n", ex.what());
+              continue;
+            }
           }
         }
-      // Based on path topic, pridict where boats will be whilst Dory follows the path
-      // based on segements of the path? Always split path in n (10?) segements, and predict 
-      // Only look at boats with a velocity in the direction of your path?
       }
       else {
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
@@ -173,7 +157,6 @@ namespace dynamic_obstacle_avoidance_layers
             } catch (tf::TransformException ex) {
                 ROS_ERROR("%s",ex.what());
             }
-            // ROS_INFO("Distance of transform in x is %f. \n", transform_d.getOrigin().x());
             dist_boat_x = transform_d.getOrigin().x();
             dist_boat_y = transform_d.getOrigin().y();
             dist_boat = sqrt(pow(dist_boat_x, 2) + pow(dist_boat_y, 2));
@@ -183,19 +166,14 @@ namespace dynamic_obstacle_avoidance_layers
             // new location of boat wrt map (so move boat predicted distance in velocity direction)
             // result is new list of boats with adjusted locations
             dynamic_obstacle_avoidance_layers::Boat tpt;
-            // geometry_msgs::PoseStamped pt, opt;
             try{
               tpt.pose.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
               tpt.pose.position.y = boat.pose.position.y + time_boat*boat.velocity.y;
               tpt.pose.position.z = boat.pose.position.z;
               tpt.pose.orientation = boat.pose.orientation;
-              // tpt.header.frame_id = boats_list_.header.frame_id;
-              // tf_.transformPose(global_frame, pt, opt);
-              // tpt.pose = opt.pose;
 
               tpt.velocity = boat.velocity;
               tpt.size = boat.size;
-              // tf_.transformPose(global_frame, pt, opt);
               
               moved_boats_.push_back(tpt);
             }
@@ -206,22 +184,15 @@ namespace dynamic_obstacle_avoidance_layers
           }
         }
       }
-      // ROS_INFO("Number of boats in the moved_boats list: %i. \n", moved_boats_.size());
-      // ROS_INFO("Time  CustomLayerDynamic::predictedBoat() = %f. \n", (ros::Time::now().toSec() - time_start));
     }
 
     void CustomLayerDynamic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
       std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
       CustomLayerDynamic::predictedBoat();
-      // ROS_INFO("Received time to boat is %f. \n", CustomLayer::predictedBoat(1.0,2.0));
 
       for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
         dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
-
-        // double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
-        // double factor = 1.0 + mag * factor_;
-        // double point = 0.5*std::max(boat.size.x, boat.size.y)*boat_get_radius(cutoff_, amplitude_, covar_ * factor );
         double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
         *min_x = std::min(*min_x, boat.pose.position.x - 0.75 * boat_size);
@@ -248,9 +219,10 @@ namespace dynamic_obstacle_avoidance_layers
       for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
         dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
         double angle = atan2(boat.velocity.y, boat.velocity.x);
+        double velocity_mag = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
         double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
         double base = boat_get_radius(cutoff_, amplitude_, covar_) + boat_size;
-        double point = boat_get_radius(cutoff_, amplitude_, covar_ * (sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2)) * factor_)) + boat_size;
+        double point = boat_get_radius(cutoff_, amplitude_, covar_ * velocity_mag * factor_) + boat_size;
 
         unsigned int width = int( (base + point) / res ),
                       height = int( (base + point) / res );
@@ -268,11 +240,9 @@ namespace dynamic_obstacle_avoidance_layers
         else
             ox = cx + (point-base) * cos(angle) - base;
 
-        // ROS_INFO("ox = %f, oy = %f. \n", ox, oy);
         ROS_INFO("width = %u, height = %u. \n", width, height);
         int dx, dy;
         costmap->worldToMapNoBounds(ox, oy, dx, dy);
-        // ROS_INFO("dx = %u, dy = %u. \n", dx, dy);
 
         int start_x = 0, start_y=0, end_x=width, end_y = height;
         if(dx < 0)
@@ -289,14 +259,11 @@ namespace dynamic_obstacle_avoidance_layers
             start_y = -dy;
         else if(dy + height > costmap->getSizeInCellsY())
             end_y = std::max(0, (int) costmap->getSizeInCellsY() - dy);
-        // ROS_INFO("size x = %u, size y = %u. \n", ((int)costmap->getSizeInCellsX()), ((int) costmap->getSizeInCellsY()));
 
         if((int)(start_y+dy) < min_j)
             start_y = min_j - dy;
         if((int)(end_y+dy) > max_j)
             end_y = max_j - dy;
-        // ROS_INFO("min j = %u, max j = %u. \n", min_j, max_j);
-      ROS_INFO("ID = %s, Start x = %d, end_x = %d, start_y = %d, end_y = %d. \n", boat.id.c_str(), start_x, end_x, start_y, end_y); 
 
         double bx = ox + res / 2,
                by = oy + res / 2;
@@ -340,8 +307,7 @@ namespace dynamic_obstacle_avoidance_layers
         double dot_AB, dot_BC;
         dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
         dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
-        // ROS_INFO("dot_AB = %f, dot_BC = %f. \n", dot_AB, dot_BC);
-        // ROS_INFO("end_x = %d, end_y = %d. \n", end_x, end_y);
+
         for(int i=start_x;i<end_x;i++){
           for(int j=start_y;j<end_y;j++){
             unsigned char old_cost = costmap->getCost(i+dx, j+dy);
@@ -362,13 +328,12 @@ namespace dynamic_obstacle_avoidance_layers
             dot_ABAP = AB[0]*AP[0] + AB[1]*AP[1];
             dot_BCBP = BC[0]*BP[0] + BC[1]*BP[1];
 
-            if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC))) {
-              // ROS_INFO("dot_ABAP = %f, dot_BCBP = %f. \n", dot_ABAP, dot_BCBP);
+            if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC)))
               a = costmap_2d::LETHAL_OBSTACLE;
-            } else if(fabs(diff)<M_PI/2)
-              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*factor_*boat_size,covar_*factor_*boat_size,angle);
+            else if(fabs(diff)<M_PI/2)
+              a = boat_gaussian(x,y,cx,cy,amplitude_, covar_*(1.0 + velocity_mag * factor_)*(boat_size + velocity_mag),covar_*(boat_size + velocity_mag),angle); //covar_*factor_*boat_size,covar_*factor_*boat_size,angle);
             else //gaussian distribution not in velocity direction
-              a = boat_gaussian(x,y,cx,cy,amplitude_,covar_*boat.size.x,covar_*boat.size.y,yaw);
+              a = boat_gaussian(x,y,cx,cy,amplitude_, covar_*(boat_size + velocity_mag),covar_*(boat_size + velocity_mag),0); //covar_*boat.size.x,covar_*boat.size.y,yaw);
 
             if(a < cutoff_)
               continue;
@@ -377,7 +342,6 @@ namespace dynamic_obstacle_avoidance_layers
           }
         }
       }
-      ROS_INFO("Time  CustomLayerDynamic::updateCosts = %f. \n", (ros::Time::now().toSec() - time_start));
     }
 
     void CustomLayerDynamic::configure(CustomLayerDynamicConfig &config, uint32_t level) {

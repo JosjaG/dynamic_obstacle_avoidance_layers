@@ -50,22 +50,13 @@ namespace dynamic_obstacle_avoidance_layers
   }
 
   void CustomLayerStatic::timerCallback(const ros::TimerEvent&) {
-    // boats_list_.boats.clear();
-    // // ROS_INFO("Checking if any obstacle can be removed. \n");
-    // if (static_obstacles_.size() > 0)
-    //   CustomLayerStatic::removeOldObstacles();
     timer = true;
   }
 
   int CustomLayerStatic::removeOldObstacles() {
-    double time_start = ros::Time::now().toSec();
     double tolerance = 0.5;
     boost::shared_ptr<sensor_msgs::LaserScan const> laser_msg;
-    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.5));
-    // if(laser_msg != NULL){
-    //   laser_data = *laser_msg; 
-    // }
-    ROS_INFO("Time after getting laser data = %f. \n", (ros::Time::now().toSec() - time_start));
+    laser_msg = ros::topic::waitForMessage<sensor_msgs::LaserScan>("scan",ros::Duration(0.1));
     if (laser_msg->ranges.size() > 0) {
       tf::StampedTransform transform_d;
       std::vector<static_obstacle_> static_obstacles_keep;
@@ -98,7 +89,6 @@ namespace dynamic_obstacle_avoidance_layers
             break;
           }
         }
-      ROS_INFO("Time after lidar loop = %f. \n", (ros::Time::now().toSec() - time_start));
       }
       static_obstacles_.clear();
       std::vector<static_obstacle_>::iterator s_it;
@@ -108,15 +98,12 @@ namespace dynamic_obstacle_avoidance_layers
       }
       return 1;
     }
-    ROS_INFO("Time  CustomLayerStatic::removeOldObstacles() end = %f. \n", (ros::Time::now().toSec() - time_start));
-    // CustomLayerStatic::resetMap();
     return 0;
   }
 
   void CustomLayerStatic::filterStatic() {
-    // double time_start = ros::Time::now().toSec();
-    // if (timer && (static_obstacles_.size() > 0))
-      // int temp = CustomLayerStatic::removeOldObstacles();
+    if (timer && (static_obstacles_.size() > 0))
+      int temp = CustomLayerStatic::removeOldObstacles();
 
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
       dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
@@ -138,8 +125,6 @@ namespace dynamic_obstacle_avoidance_layers
     for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
       struct static_obstacle_ obstacle = *o_it;
       dynamic_obstacle_avoidance_layers::Boat tpt;
-      // geometry_msgs::PoseStamped pt, opt;
-      // std::string global_frame = layered_costmap_->getGlobalFrameID();
       if (ros::Time::now().toSec()-obstacle.received.toSec()<static_keep_time_.toSec()) {  
         try{
           tpt.pose = obstacle.boat.pose;
@@ -164,7 +149,6 @@ namespace dynamic_obstacle_avoidance_layers
       boats_list_.boats.clear();
       timer = false;
     }
-    // ROS_INFO("Time  CustomLayerStatic::filterStatic() = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
   void CustomLayerStatic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) {
@@ -189,7 +173,6 @@ namespace dynamic_obstacle_avoidance_layers
     std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
     costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
     double res = costmap->getResolution();
-    // ROS_INFO("Size within updater = %lu. \n", static_boats_.size());
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
       dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
@@ -205,17 +188,8 @@ namespace dynamic_obstacle_avoidance_layers
       double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
       double ox, oy;
-      // if(sin(yaw)>0.0) {
-          oy = cy - boat_size;
-          // ROS_INFO("sin(yaw)>0.0. \n"); 
-      // } else
-          // oy = cy + (boat_size) * sin(yaw) - boat_size;
-
-      // if(cos(yaw)>=0.0) {
-          ox = cx - boat_size;
-          // ROS_INFO("cos(yaw)>=0.0. \n"); 
-      // } else
-          // ox = cx + (boat_size) * cos(yaw) - boat_size;
+      oy = cy - boat_size;
+      ox = cx - boat_size;
 
       int dx, dy;
       costmap->worldToMapNoBounds(ox, oy, dx, dy);
@@ -241,8 +215,6 @@ namespace dynamic_obstacle_avoidance_layers
         start_y = min_j - dy;
       if((int)(end_y+dy) > max_j)
         end_y = max_j - dy;
-
-      ROS_INFO("ID = %s, Start x = %d, end_x = %d, start_y = %d, end_y = %d. \n", boat.id.c_str(), start_x, end_x, start_y, end_y); 
 
       double bx = ox + res / 2, by = oy + res / 2;
 
@@ -280,8 +252,6 @@ namespace dynamic_obstacle_avoidance_layers
       dot_AB = AB[0]*AB[0] + AB[1]*AB[1];
       dot_BC = BC[0]*BC[0] + BC[1]*BC[1];
 
-      // costmap->resetMap(); 
-
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
           unsigned char old_cost = costmap->getCost(i+dx, j+dy);
@@ -303,7 +273,7 @@ namespace dynamic_obstacle_avoidance_layers
           if ((0.0 < (dot_ABAP)) && ((dot_ABAP) < (dot_AB)) && (0.0 < (dot_BCBP)) && ((dot_BCBP) < (dot_BC))) {
             a = costmap_2d::LETHAL_OBSTACLE;
           } else {
-            a = costmap_2d::FREE_SPACE; //static_gaussian(x,y,cx,cy,boat.size.x,boat.size.y,yaw);
+            a = costmap_2d::FREE_SPACE;
           }
 
           unsigned char cvalue = (unsigned char) a;
@@ -311,7 +281,6 @@ namespace dynamic_obstacle_avoidance_layers
         }
       }
     }
-    ROS_INFO("Time  CustomLayerStatic::updateCosts() = %f. \n", (ros::Time::now().toSec() - time_start));
   }
 
   void CustomLayerStatic::configure(CustomLayerStaticConfig &config, uint32_t level) {
