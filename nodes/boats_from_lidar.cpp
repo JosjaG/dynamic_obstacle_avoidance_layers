@@ -1,10 +1,10 @@
-#include <social_navigation_layers/boats_from_lidar.h>
+#include <dynamic_obstacle_avoidance_layers/boats_from_lidar.h>
 
-const char * matchBoats(social_navigation_layers::Boat boat) {
+const char * matchBoats(dynamic_obstacle_avoidance_layers::Boat boat) {
     if (prev_boats_.size() != 0) {
-        std::vector<social_navigation_layers::Boat>::iterator o_it;
+        std::vector<dynamic_obstacle_avoidance_layers::Boat>::iterator o_it;
         for(o_it = prev_boats_.begin(); o_it != prev_boats_.end(); ++o_it) {
-            social_navigation_layers::Boat prev_boat = *o_it;
+            dynamic_obstacle_avoidance_layers::Boat prev_boat = *o_it;
             if (abs(boat.lidar_index - prev_boat.lidar_index) < near_range) {
                 const char *str = prev_boat.id.c_str();
                 return str;
@@ -36,12 +36,12 @@ void filterBoats() {
         int a = (int) ((obstacle.min_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.min_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
         int b = (int) ((obstacle.closest_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.closest_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
         int c = (int) ((obstacle.max_point.x - map_.info.origin.position.x)/map_.info.resolution + 0.5) + (int) ((obstacle.max_point.y - map_.info.origin.position.y)/map_.info.resolution + 0.5) * map_.info.width;
-	bool not_static_obstacle = (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100);
+	    bool not_static_obstacle = (map_.data[a] != 100 || map_.data[b] != 100 || map_.data[c] != 100);
         bool not_unknown_space = (map_.data[a] != -1 || map_.data[b] != -1 || map_.data[c] != -1);
         if (not_static_obstacle && not_unknown_space) { // || map_.data[a] == -1 || map_.data[b] == -1 || map_.data[c] == -1) {
           // break;
         // } else {
-            social_navigation_layers::Boat boat;
+            dynamic_obstacle_avoidance_layers::Boat boat;
 
             if (obstacle.closest_point.x == 0.0 && obstacle.closest_point.y == 0.0)
                 obstacle.closest_point = obstacle.min_point;
@@ -108,14 +108,14 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     obstacle_list.clear();
     tf::StampedTransform transform_d;
     try {
-        listener_->waitForTransform("map", "lidar", ros::Time(0), ros::Duration(1.0));
-        listener_->lookupTransform("map", "lidar", ros::Time(0), transform_d);
+        listener_->waitForTransform("map", scan->header.frame_id, ros::Time(0), ros::Duration(1.0));
+        listener_->lookupTransform("map", scan->header.frame_id, ros::Time(0), transform_d);
     } catch (tf::TransformException ex) {
         ROS_ERROR("%s",ex.what());
     }
     double roll, pitch, yaw;
     tf::Matrix3x3(transform_d.getRotation()).getEulerYPR(yaw,pitch,roll);
-    int num_scans = (scan->angle_min + scan->angle_max)/scan->angle_increment;
+    int num_scans = (scan->angle_min + scan->angle_max)/scan->angle_increment; // this way, num_scans is zero...
     if (scan->ranges[0] < scan->range_max) {
         in_object = true;
     }
@@ -124,6 +124,8 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
     for (int i=1; i < scan->ranges.size(); ++i) {
         if (in_object) {
             if (scan->ranges[i] < closest_entity) {
+                // temp_obstacle.closest_point.x = transform_d.getOrigin().x() - cos(yaw + i*scan->angle_increment) * scan->ranges[i];
+                // temp_obstacle.closest_point.y = transform_d.getOrigin().y() - sin(yaw + i*scan->angle_increment) * scan->ranges[i];
                 if (i<(num_scans/2)) { // Slightly nasty assumption that angle_min = angle_max
                     temp_obstacle.closest_point.x = transform_d.getOrigin().x() - cos(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
                     temp_obstacle.closest_point.y = transform_d.getOrigin().y() - sin(yaw - (num_scans/2 - i)*scan->angle_increment) * scan->ranges[i];
@@ -147,10 +149,12 @@ void lidarCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
                  (temp_obstacle.min_point.x < scan->range_max && temp_obstacle.closest_point.x < scan->range_max && temp_obstacle.max_point.x < scan->range_max)) && obstacle_big_enough)
                     obstacle_list.push_back(temp_obstacle);
                 in_object = false;
-                ROS_INFO("Obstacle size is %f. \n", (scan->ranges[i]*((i - min_point_lidar)*scan->angle_increment)));
-                ROS_INFO("Obstacle big enough is %d. \n", obstacle_big_enough);
-                ROS_INFO("min_obstacle_size is %f. \n", min_obstacle_size);
-
+                // ROS_INFO("Obstacle size is %f. \n", (scan->ranges[i]*((i - min_point_lidar)*scan->angle_increment)));
+                // ROS_INFO("Obstacle big enough is %d. \n", obstacle_big_enough);
+                // ROS_INFO("min_obstacle_size is %f. \n", min_obstacle_size);
+                // ROS_INFO("MIN_POINT : x = %f, y = %f. \n", temp_obstacle.min_point.x, temp_obstacle.min_point.y);
+                // ROS_INFO("CLOSEST_POINT : x = %f, y = %f. \n", temp_obstacle.closest_point.x, temp_obstacle.closest_point.y);
+                // ROS_INFO("MAX_POINT : x = %f, y = %f. \n", temp_obstacle.max_point.x, temp_obstacle.max_point.y);
                 temp_obstacle = {};
                 closest_entity = scan->range_max;
             }
@@ -197,7 +201,7 @@ int main(int argc, char** argv)
   else
     min_obstacle_size = 0.15;
   // instantiate publishers & subscribers
-  boats_pub_ = node.advertise<social_navigation_layers::Boats>("boats_detected", 1);
+  boats_pub_ = node.advertise<dynamic_obstacle_avoidance_layers::Boats>("boats_detected", 1);
   laser_sub_ = node.subscribe("scan", 1, lidarCallback);
   map_sub_ = node.subscribe("map", 1, mapCallback);
 

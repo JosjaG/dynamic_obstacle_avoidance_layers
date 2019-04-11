@@ -1,11 +1,11 @@
-#include <social_navigation_layers/custom_layer_static.h>
+#include <dynamic_obstacle_avoidance_layers/custom_layer_static.h>
 #include <math.h>
 #include <angles/angles.h>
 #include <sensor_msgs/LaserScan.h>
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
 #include <algorithm>
-PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayerStatic, costmap_2d::Layer)
+PLUGINLIB_EXPORT_CLASS(dynamic_obstacle_avoidance_layers::CustomLayerStatic, costmap_2d::Layer)
 
 using costmap_2d::NO_INFORMATION;
 using costmap_2d::LETHAL_OBSTACLE;
@@ -22,9 +22,9 @@ double static_gaussian(double x, double y, double x0, double y0, double varx, do
     return 255.0 * exp(-(f1 + f2));
 }
 
-namespace social_navigation_layers
+namespace dynamic_obstacle_avoidance_layers
 {
-  int CustomLayerStatic::search(social_navigation_layers::Boat& boat_in){
+  int CustomLayerStatic::search(dynamic_obstacle_avoidance_layers::Boat& boat_in){
     std::string id = boat_in.id;
     std::vector<static_obstacle_>::iterator result = std::find_if(
       static_obstacles_.begin(),
@@ -119,7 +119,7 @@ namespace social_navigation_layers
       // int temp = CustomLayerStatic::removeOldObstacles();
 
     for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
-      social_navigation_layers::Boat& boat = boats_list_.boats[i];
+      dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
       double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
       if (boat_vel<0.1) {
         if (CustomLayerStatic::search(boat)==-1) {
@@ -137,7 +137,7 @@ namespace social_navigation_layers
     ROS_INFO("Size within filter = %lu. \n", static_obstacles_.size());
     for(o_it = static_obstacles_.begin(); o_it != static_obstacles_.end(); ++o_it) {
       struct static_obstacle_ obstacle = *o_it;
-      social_navigation_layers::Boat tpt;
+      dynamic_obstacle_avoidance_layers::Boat tpt;
       // geometry_msgs::PoseStamped pt, opt;
       // std::string global_frame = layered_costmap_->getGlobalFrameID();
       if (ros::Time::now().toSec()-obstacle.received.toSec()<static_keep_time_.toSec()) {  
@@ -168,11 +168,11 @@ namespace social_navigation_layers
   }
 
   void CustomLayerStatic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y) {
-    std::list<social_navigation_layers::Boat>::iterator p_it;
+    std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
     CustomLayerStatic::filterStatic();
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
-      social_navigation_layers::Boat boat = *p_it;
+      dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
       double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
 
       *min_x = std::min(*min_x, boat.pose.position.x - 0.75 * boat_size);
@@ -186,13 +186,13 @@ namespace social_navigation_layers
     double time_start = ros::Time::now().toSec();
     boost::recursive_mutex::scoped_lock lock(lock_);
     if(!enabled_) return;
-    std::list<social_navigation_layers::Boat>::iterator p_it;
+    std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
     costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
     double res = costmap->getResolution();
     // ROS_INFO("Size within updater = %lu. \n", static_boats_.size());
 
     for(p_it = static_boats_.begin(); p_it != static_boats_.end(); ++p_it) {
-      social_navigation_layers::Boat boat = *p_it;
+      dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
 
       double cx = boat.pose.position.x;
       double cy = boat.pose.position.y;
@@ -284,9 +284,9 @@ namespace social_navigation_layers
 
       for(int i=start_x;i<end_x;i++) {
         for(int j=start_y;j<end_y;j++) {
-          // unsigned char old_cost = costmap->getCost(i+dx, j+dy);
-          // if(old_cost == costmap_2d::NO_INFORMATION)
-            // continue;
+          unsigned char old_cost = costmap->getCost(i+dx, j+dy);
+          if(old_cost == costmap_2d::NO_INFORMATION)
+            continue;
 
           double x = bx+i*res, y = by+j*res;
           double a;
@@ -307,7 +307,7 @@ namespace social_navigation_layers
           }
 
           unsigned char cvalue = (unsigned char) a;
-          costmap->setCost(i+dx, j+dy, cvalue); // std::max(cvalue, old_cost));
+          costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
         }
       }
     }

@@ -1,4 +1,4 @@
-#include <social_navigation_layers/custom_layer_dynamic.h>
+#include <dynamic_obstacle_avoidance_layers/custom_layer_dynamic.h>
 #include <math.h>
 #include <angles/angles.h>
 #include <pluginlib/class_list_macros.h>
@@ -6,7 +6,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 // #include <tf2/Matrix3x3.h>
 // #include <tf/transformations.h> //2_geometry_msgs/tf2_geometry_msgs.h>
-PLUGINLIB_EXPORT_CLASS(social_navigation_layers::CustomLayerDynamic, costmap_2d::Layer)
+PLUGINLIB_EXPORT_CLASS(dynamic_obstacle_avoidance_layers::CustomLayerDynamic, costmap_2d::Layer)
 
 using costmap_2d::NO_INFORMATION;
 using costmap_2d::LETHAL_OBSTACLE;
@@ -27,7 +27,7 @@ double boat_get_radius(double cutoff, double A, double var){
     return sqrt(-2*var * log(cutoff/A) );
 }
 
-namespace social_navigation_layers
+namespace dynamic_obstacle_avoidance_layers
 {
     void CustomLayerDynamic::onInitialize()
     {
@@ -108,7 +108,7 @@ namespace social_navigation_layers
               if (i==0) {
                 temp_boats[j].dist = -1.0;
               }
-              social_navigation_layers::Boat& boat = boats_list_.boats[j];
+              dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[j];
               double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
               if (boat_vel>0.1) {
                 max_d = 0.75*std::max(boat.size.x, boat.size.y);
@@ -128,10 +128,10 @@ namespace social_navigation_layers
             }
         }
         for (unsigned int i=0; i<boats_list_.boats.size(); i++) { 
-          social_navigation_layers::Boat& boat = boats_list_.boats[i];
+          dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
           if (boat_vel>0.1) {
-            social_navigation_layers::Boat tpt;
+            dynamic_obstacle_avoidance_layers::Boat tpt;
             geometry_msgs::PoseStamped pt, opt;
               if (temp_boats[i].dist>0.0){          
                 try{
@@ -163,7 +163,7 @@ namespace social_navigation_layers
       }
       else {
         for(unsigned int i=0; i<boats_list_.boats.size(); i++){
-          social_navigation_layers::Boat& boat = boats_list_.boats[i];
+          dynamic_obstacle_avoidance_layers::Boat& boat = boats_list_.boats[i];
           double boat_vel = sqrt(pow(boat.velocity.x, 2) + pow(boat.velocity.y, 2));
           if (boat_vel>0.1) {
           // position boat wrt dory --> distance between boat and dory
@@ -182,7 +182,7 @@ namespace social_navigation_layers
             // predicted distance boat will travel in given time --> time to boat * velocity of boat
             // new location of boat wrt map (so move boat predicted distance in velocity direction)
             // result is new list of boats with adjusted locations
-            social_navigation_layers::Boat tpt;
+            dynamic_obstacle_avoidance_layers::Boat tpt;
             // geometry_msgs::PoseStamped pt, opt;
             try{
               tpt.pose.position.x = boat.pose.position.x + time_boat*boat.velocity.x;
@@ -212,12 +212,12 @@ namespace social_navigation_layers
 
     void CustomLayerDynamic::updateBoundsFromBoats(double* min_x, double* min_y, double* max_x, double* max_y)
     {
-      std::list<social_navigation_layers::Boat>::iterator p_it;
+      std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
       CustomLayerDynamic::predictedBoat();
       // ROS_INFO("Received time to boat is %f. \n", CustomLayer::predictedBoat(1.0,2.0));
 
       for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
-        social_navigation_layers::Boat boat = *p_it;
+        dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
 
         // double mag = sqrt(pow(boat.velocity.x,2) + pow(boat.velocity.y, 2));
         // double factor = 1.0 + mag * factor_;
@@ -241,12 +241,12 @@ namespace social_navigation_layers
       if( cutoff_ >= amplitude_)
         return;
 
-      std::list<social_navigation_layers::Boat>::iterator p_it;
+      std::list<dynamic_obstacle_avoidance_layers::Boat>::iterator p_it;
       costmap_2d::Costmap2D* costmap = layered_costmap_->getCostmap();
       double res = costmap->getResolution();
 
       for(p_it = moved_boats_.begin(); p_it != moved_boats_.end(); ++p_it){
-        social_navigation_layers::Boat boat = *p_it;
+        dynamic_obstacle_avoidance_layers::Boat boat = *p_it;
         double angle = atan2(boat.velocity.y, boat.velocity.x);
         double boat_size = sqrt(pow(boat.size.x, 2) + pow(boat.size.y, 2));
         double base = boat_get_radius(cutoff_, amplitude_, covar_) + boat_size;
@@ -373,7 +373,7 @@ namespace social_navigation_layers
             if(a < cutoff_)
               continue;
             unsigned char cvalue = (unsigned char) a;
-            costmap->setCost(i+dx, j+dy, cvalue); // std::max(cvalue, old_cost));
+            costmap->setCost(i+dx, j+dy, std::max(cvalue, old_cost));
           }
         }
       }

@@ -4,7 +4,7 @@ import rospy
 from geometry_msgs.msg import Point, Pose, Vector3
 import math
 from kalman_filter import Kalman
-from social_navigation_layers.msg import Boat, Boats
+from dynamic_obstacle_avoidance_layers.msg import Boat, Boats
 from kalman_filter import Kalman
 
 def subtract(v1, v2):
